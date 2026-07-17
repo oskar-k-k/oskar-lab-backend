@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: oskar-lab-postgres
+    environment:
+      POSTGRES_DB: oskarlab
+      POSTGRES_USER: oskar
+      POSTGRES_PASSWORD: dev
+    ports:
+      - "6543:5432"
+    volumes:
+      - oskar-lab-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  oskar-lab-postgres-data:
