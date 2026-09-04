@@ -18,8 +18,4 @@ class ProjectEntity extends AbstractEntity{
     @Column(nullable = true, length = 2048)
     String description;
 
-    ProjectEntity(){
-        
-    }
-
 }
