@@ -110,13 +110,10 @@ class WorkoutApiTests {
         assertEquals(404, call("PUT", "plans/" + template.get("id").asText(), template.toString(), owner, true).statusCode());
     }
     private tools.jackson.databind.node.ObjectNode log(String type) throws Exception {
-        var plan = draft();
-        var first = (tools.jackson.databind.node.ObjectNode) plan.get("exercises").get(0);
-        first.put("trackingMode", type);
-        assertEquals(201, call("POST", "plans", plan.toString(), owner, true).statusCode());
+        var catalog = json.readTree(call("GET", "exercises", null, null, true).body());
         var input = json.createObjectNode();
-        input.put("id", UUID.randomUUID().toString()); input.put("planId", plan.get("id").asText());
-        input.put("planVersion", 0); input.put("position", 0); input.put("exerciseId", first.get("exerciseId").asText());
+        input.put("id", UUID.randomUUID().toString());
+        input.put("exerciseId", catalog.get(0).get("id").asText());
         input.put("trackingMode", type);
         var set = input.putArray("sets").addObject(); set.put("setNumber", 1); set.put("value", 12);
         if (type.equals("weighted")) set.put("weight", 12.5); else set.putNull("weight");
@@ -137,46 +134,60 @@ class WorkoutApiTests {
             assertTrue(json.readTree(call("GET", history, null, owner, true).body()).get("entries").size() > 0);
             UUID originalOwner = owner; account();
             assertEquals(0, json.readTree(call("GET", history, null, owner, true).body()).get("entries").size());
+            assertEquals(409, call("POST", "logs", input.toString(), owner, true).statusCode());
             input.put("id", UUID.randomUUID().toString());
-            assertEquals(404, call("POST", "logs", input.toString(), owner, true).statusCode());
+            assertEquals(201, call("POST", "logs", input.toString(), owner, true).statusCode());
             owner = originalOwner;
         }
     }
-    @Test void rejectsIncompleteWeightsInvalidSetsAndStalePlans() throws Exception {
+    @Test void rejectsInvalidWeightsMissingValuesAndUnknownExercises() throws Exception {
         var input = log("weighted");
         var set = (tools.jackson.databind.node.ObjectNode) input.get("sets").get(0);
-        for (String invalid : List.of("null", "-1", "1.123")) {
+        for (String invalid : List.of("-1", "1.123")) {
             set.set("weight", json.readTree(invalid));
             assertEquals(400, call("POST", "logs", input.toString(), owner, true).statusCode());
         }
         set.put("weight", 0); set.put("value", -1);
         assertEquals(400, call("POST", "logs", input.toString(), owner, true).statusCode());
-        set.put("value", 0); input.put("planVersion", 5);
-        assertEquals(409, call("POST", "logs", input.toString(), owner, true).statusCode());
-        input.put("planVersion", 0); input.put("trackingMode", "seconds");
-        assertEquals(409, call("POST", "logs", input.toString(), owner, true).statusCode());
-        input.put("trackingMode", "weighted");
+        set.putNull("value");
+        assertEquals(400, call("POST", "logs", input.toString(), owner, true).statusCode());
+        set.put("value", 0);
+        String exerciseId = input.get("exerciseId").asText();
+        input.put("exerciseId", UUID.randomUUID().toString());
+        assertEquals(404, call("POST", "logs", input.toString(), owner, true).statusCode());
+        input.put("exerciseId", exerciseId);
         ((tools.jackson.databind.node.ArrayNode) input.get("sets")).add(set.deepCopy());
         assertEquals(400, call("POST", "logs", input.toString(), owner, true).statusCode());
         assertEquals(403, call("POST", "logs", input.toString(), owner, false).statusCode());
         assertEquals(401, call("GET", "history/" + input.get("exerciseId").asText(), null, UUID.randomUUID(), true).statusCode());
     }
-    @Test void retainsHistoryAfterPlanEditsAndPaginates() throws Exception {
+    @Test void retainsHistoryWithoutPlansAndPaginates() throws Exception {
         var input = log("seconds");
         for (int i = 0; i < 21; i++) {
             input.put("id", UUID.randomUUID().toString());
             assertEquals(201, call("POST", "logs", input.toString(), owner, true).statusCode());
         }
-        String path = "plans/" + input.get("planId").asText();
-        var plan = (tools.jackson.databind.node.ObjectNode) json.readTree(call("GET", path, null, owner, true).body());
-        ((tools.jackson.databind.node.ObjectNode) plan.get("exercises").get(0)).put("trackingMode", "weighted");
-        assertEquals(200, call("PUT", path, plan.toString(), owner, true).statusCode());
+        assertEquals(0, json.readTree(call("GET", "plans", null, owner, true).body()).get("plans").size());
         String history = "history/" + input.get("exerciseId").asText();
         var first = json.readTree(call("GET", history, null, owner, true).body());
         assertEquals(20, first.get("entries").size()); assertTrue(first.get("hasMore").asBoolean());
         assertEquals("seconds", first.get("entries").get(0).get("trackingMode").asText());
         assertEquals(1, json.readTree(call("GET", history + "?page=1", null, owner, true).body()).get("entries").size());
         assertEquals(201, call("POST", "logs", input.toString(), owner, true).statusCode());
+    }
+
+    @Test void acceptsOptionalWeightForAnyUnitAndIgnoresLegacyPlanContext() throws Exception {
+        for (String unit : List.of("reps", "seconds", "weighted")) {
+            var input = log(unit);
+            input.put("planId", UUID.randomUUID().toString()); input.put("planVersion", 99); input.put("position", 99);
+            var set = (tools.jackson.databind.node.ObjectNode) input.get("sets").get(0);
+            set.putNull("weight");
+            var without = call("POST", "logs", input.toString(), owner, true);
+            assertEquals(201, without.statusCode(), without.body());
+            assertFalse(json.readTree(without.body()).has("planName"));
+            input.put("id", UUID.randomUUID().toString()); set.put("weight", 5.5);
+            assertEquals(201, call("POST", "logs", input.toString(), owner, true).statusCode());
+        }
     }
 
 }

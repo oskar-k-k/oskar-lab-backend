@@ -12,10 +12,11 @@ public class WorkoutLog {
     @Id public UUID id;
     @Column(nullable = false) public UUID ownerId;
     @Column(nullable = false) public UUID exerciseId;
-    @Column(nullable = false) public UUID planId;
-    public long planVersion;
-    public int position;
-    @Column(nullable = false, length = 120) public String planName;
+    /** Legacy context retained for existing records; new logs have no plan dependency. */
+    public UUID planId;
+    public Long planVersion;
+    public Integer position;
+    @Column(length = 120) public String planName;
     @Column(nullable = false, length = 12) public String trackingMode;
     @Column(nullable = false) public Instant recordedAt;
     @ElementCollection
