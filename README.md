@@ -42,3 +42,5 @@ Create `.env.local` from `.env.example`, using the same bridge secret as the fro
 Google claims are accepted only from the trusted platform after Auth.js validates OAuth/OIDC. Never expose a public endpoint that forwards user-supplied Google subjects as trusted identities. Accounts use internal UUIDs; app authorization must check ownership on the server. Passwords and session credentials are never included in account responses. Tests cover registration, hashing, consent, Google onboarding, secure linking, session revocation, the bridge boundary and rate limiting.
 
 Before multi-instance deployment, replace the in-memory attempt limiter with a shared store, add proxy/IP throttling, and schedule expired-session cleanup. Account email verification, password recovery and mail delivery are not configured in this iteration.
+
+Migration V3 preserves username display case and backfills a separate unique lowercase lookup key. Login and duplicate detection remain case-insensitive for both local and Google accounts.

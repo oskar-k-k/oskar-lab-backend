@@ -7,6 +7,6 @@ import java.util.UUID;
 /** Looks up canonical identities and unique provider subjects. */
 public interface AccountRepository extends JpaRepository<Account, UUID> {
     Optional<Account> findByEmail(String email);
-    Optional<Account> findByUsername(String username);
+    Optional<Account> findByUsernameKey(String usernameKey);
     Optional<Account> findByGoogleSubject(String subject);
 }

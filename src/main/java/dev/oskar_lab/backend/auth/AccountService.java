@@ -32,10 +32,11 @@ public class AccountService {
         if (password.length() < 12 || password.length() > 128) fail(400, "invalidPassword");
         if (!password.equals(text(input, "passwordRepeat"))) fail(400, "passwordMismatch");
         requireTerms(input);
-        if (accounts.findByEmail(email).isPresent() || accounts.findByUsername(username).isPresent()) fail(409, "accountExists");
+        if (accounts.findByEmail(email).isPresent() || accounts.findByUsernameKey(username.toLowerCase(Locale.ROOT)).isPresent()) fail(409, "accountExists");
         Account account = new Account();
         account.email = email;
         account.username = username;
+        account.usernameKey = username.toLowerCase(Locale.ROOT);
         account.passwordHash = Passwords.hash(password);
         acceptTerms(account);
         accounts.saveAndFlush(account);
@@ -48,7 +49,7 @@ public class AccountService {
         String identifier = text(input, "identifier").strip().toLowerCase(Locale.ROOT);
         String password = text(input, "password");
         if (identifier.length() > 254 || password.length() > 128) fail(401, "invalidCredentials");
-        Account account = (identifier.contains("@") ? accounts.findByEmail(identifier) : accounts.findByUsername(identifier)).orElse(null);
+        Account account = (identifier.contains("@") ? accounts.findByEmail(identifier) : accounts.findByUsernameKey(identifier)).orElse(null);
         boolean valid = Passwords.matches(password, account == null || account.passwordHash == null ? dummyHash : account.passwordHash);
         if (!valid || account == null || account.passwordHash == null) fail(401, "invalidCredentials");
         return createSession(account);
@@ -94,8 +95,9 @@ public class AccountService {
         String username = username(input);
         requireTerms(input);
         if (account.username != null) return identity(account);
-        if (accounts.findByUsername(username).isPresent()) fail(409, "usernameTaken");
+        if (accounts.findByUsernameKey(username.toLowerCase(Locale.ROOT)).isPresent()) fail(409, "usernameTaken");
         account.username = username;
+        account.usernameKey = username.toLowerCase(Locale.ROOT);
         acceptTerms(account);
         accounts.saveAndFlush(account);
         return identity(account);
@@ -138,8 +140,8 @@ public class AccountService {
     }
 
     private static String username(Map<String, Object> input) {
-        String value = text(input, "username").strip().toLowerCase(Locale.ROOT);
-        if (!value.matches("[a-z0-9_]{3,32}")) fail(400, "invalidUsername");
+        String value = text(input, "username").strip();
+        if (!value.matches("[a-zA-Z0-9_]{3,32}")) fail(400, "invalidUsername");
         return value;
     }
 

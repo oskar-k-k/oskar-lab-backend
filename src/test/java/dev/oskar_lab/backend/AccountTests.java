@@ -70,4 +70,23 @@ class AccountTests {
     @Test void rejectsUnverifiedGoogleEmail() {
         assertThrows(AuthFailure.class, () -> service.google(Map.of("subject", "unverified", "email", "user@example.com", "emailVerified", false)));
     }
+
+    @Test void preservesUsernameCaseAndPreventsCaseOnlyDuplicates() {
+        var data = new HashMap<>(registration("mixedcase"));
+        data.put("username", "Cr0wy");
+        var account = service.register(data);
+        assertEquals("Cr0wy", account.get("name"));
+        String token = (String) service.login(Map.of("identifier", "cR0WY", "password", "long test password")).get("token");
+        assertEquals(account.get("id"), service.current(token).get("id"));
+        var duplicate = new HashMap<>(registration("othermail"));
+        duplicate.put("username", "cr0wy");
+        assertEquals("accountExists", assertThrows(AuthFailure.class, () -> service.register(duplicate)).getMessage());
+    }
+
+    @Test void acceptsMixedCaseGoogleOnboardingAndRejectsExistingUsername() {
+        service.register(registration("taken_name"));
+        String token = (String) service.google(Map.of("subject", "mixed-google", "email", "mixed-google@example.invalid", "emailVerified", true)).get("token");
+        assertEquals("usernameTaken", assertThrows(AuthFailure.class, () -> service.complete(token, Map.of("username", "Taken_Name", "acceptTerms", true, "termsVersion", AccountService.TERMS_VERSION))).getMessage());
+        assertEquals("Cr0wy", service.complete(token, Map.of("username", "Cr0wy", "acceptTerms", true, "termsVersion", AccountService.TERMS_VERSION)).get("name"));
+    }
 }
