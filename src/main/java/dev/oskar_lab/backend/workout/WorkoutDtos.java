@@ -14,7 +14,8 @@ public final class WorkoutDtos {
             @NotNull @Pattern(regexp = "reps|seconds|unspecified") String mode,
             @Min(1) @Max(86400) Integer targetMin, @Min(1) @Max(86400) Integer targetMax,
             @Min(0) @Max(86400) Integer restMin, @Min(0) @Max(86400) Integer restMax,
-            @NotNull @Size(max = 32) String superset, @NotNull @Size(max = 1000) String notes) {}
+            @NotNull @Size(max = 32) String superset, @NotNull @Size(max = 1000) String notes,
+            @Pattern(regexp = "reps|seconds|weighted") String trackingMode) {}
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties("template")
     public record SavePlan(
             @NotNull UUID id, @Min(0) long version,

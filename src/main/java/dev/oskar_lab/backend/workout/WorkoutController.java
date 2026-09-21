@@ -18,8 +18,9 @@ import static dev.oskar_lab.backend.workout.WorkoutDtos.*;
 public class WorkoutController {
     private final WorkoutService service;
     private final String secret;
-    public WorkoutController(WorkoutService service, @Value("${auth.bridge-secret:}") String secret) {
-        this.service = service; this.secret = secret;
+    private final TrackingService tracking;
+    public WorkoutController(WorkoutService service, TrackingService tracking, @Value("${auth.bridge-secret:}") String secret) {
+        this.service = service; this.tracking = tracking; this.secret = secret;
     }
 
     @ModelAttribute
@@ -51,6 +52,20 @@ public class WorkoutController {
         service.requireAccount(owner);
         if (!id.equals(input.id())) throw new AuthFailure(400, "invalidPlan");
         return service.save(owner, input, false);
+    }
+    /** Appends actual sets to the authenticated user's exercise history. */
+    @PostMapping("/logs")
+    public ResponseEntity<TrackingDtos.Log> record(@RequestHeader("X-User-Id") UUID owner, @Valid @RequestBody TrackingDtos.SaveLog input) {
+        service.requireAccount(owner);
+        return ResponseEntity.status(201).body(tracking.save(owner, input));
+    }
+    /** Reads a bounded page of personal history across all plans using this exercise. */
+    @GetMapping("/history/{exerciseId}")
+    public TrackingDtos.History history(@RequestHeader("X-User-Id") UUID owner, @PathVariable UUID exerciseId,
+            @RequestParam(defaultValue = "0") int page) {
+        service.requireAccount(owner);
+        if (page < 0 || page > 10000) throw new AuthFailure(400, "invalidTracking");
+        return tracking.history(owner, exerciseId, page);
     }
     @ExceptionHandler(AuthFailure.class)
     ResponseEntity<Map<String, String>> failure(AuthFailure error) {

@@ -77,6 +77,7 @@ public class WorkoutService {
             row.exercise = catalog.get(entry.exerciseId());
             row.position = plan.exercises.size();
             row.setsMin = entry.setsMin(); row.setsMax = entry.setsMax(); row.mode = entry.mode();
+            row.trackingMode = entry.trackingMode() == null ? ("seconds".equals(entry.mode()) ? "seconds" : "reps") : entry.trackingMode();
             row.targetMin = entry.targetMin(); row.targetMax = entry.targetMax();
             row.restMin = entry.restMin(); row.restMax = entry.restMax();
             row.superset = entry.superset().strip(); row.notes = entry.notes();
@@ -107,6 +108,6 @@ public class WorkoutService {
     private Plan dto(WorkoutPlan plan) {
         return new Plan(plan.id, plan.version, plan.name, plan.notes, plan.ownerId == null,
                 plan.exercises.stream().map(e -> new Entry(e.exercise.getId(), e.setsMin, e.setsMax, e.mode,
-                        e.targetMin, e.targetMax, e.restMin, e.restMax, e.superset, e.notes)).toList());
+                        e.targetMin, e.targetMax, e.restMin, e.restMax, e.superset, e.notes, e.trackingMode)).toList());
     }
 }

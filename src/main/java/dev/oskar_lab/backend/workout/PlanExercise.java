@@ -14,6 +14,8 @@ public class PlanExercise {
     public int setsMin;
     public int setsMax;
     @Column(nullable = false, length = 12) public String mode;
+    @org.hibernate.annotations.ColumnDefault("'reps'")
+    @Column(nullable = false, length = 12) public String trackingMode = "reps";
     public Integer targetMin;
     public Integer targetMax;
     public Integer restMin;
