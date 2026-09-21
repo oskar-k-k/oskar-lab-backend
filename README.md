@@ -44,3 +44,14 @@ Google claims are accepted only from the trusted platform after Auth.js validate
 Before multi-instance deployment, replace the in-memory attempt limiter with a shared store, add proxy/IP throttling, and schedule expired-session cleanup. Account email verification, password recovery and mail delivery are not configured in this iteration.
 
 Migration V3 preserves username display case and backfills a separate unique lowercase lookup key. Login and duplicate detection remain case-insensitive for both local and Google accounts.
+
+## Production deployment
+
+The Dockerfile builds and tests a Java 21 image. `.github/workflows/deploy.yml`
+deploys pushes to `main` when `DEPLOY_ENABLED=true`; it also supports manual runs.
+GitHub holds only a dedicated restricted deployment SSH key, not the root key.
+The frontend repository's `deploy/README.md` documents the shared deployment
+scripts installed at `/opt/oskar-lab` on the server. Production uses its own
+Postgres instance and volume, separate from Lilsi. A database dump precedes each
+backend update; Flyway then applies pending migrations on startup. Production
+disables automatic baselining. No local user records are copied automatically.
