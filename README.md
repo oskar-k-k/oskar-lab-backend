@@ -24,3 +24,11 @@ New-Item -ItemType Directory -Force ../.run | Out-Null
 $env:JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=D:/Projects/WebDev/Oskar-Lab/.run"
 .\gradlew.bat --gradle-user-home "$env:USERPROFILE/.gradle" bootRun
 ```
+
+## App catalog and migration
+
+`POST /apps` lists the catalog and `GET /apps/{id}` reads an entry. The old `/projects` endpoints remain aliases during migration.
+
+Flyway version 1 renames an existing `projects` table to `apps`, preserving IDs and records, or creates `apps` in a new database. It also renames the developer-reference slug `core` to `core-design`. Existing schemas are baselined at version 0 so this migration runs on upgrades. Hibernate validates the migrated schema instead of modifying it implicitly.
+
+The database remains shared. Product separation in the frontend does not require separate databases. Authentication remains managed centrally by the platform frontend.

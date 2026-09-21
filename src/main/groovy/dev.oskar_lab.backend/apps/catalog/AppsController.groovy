@@ -1,4 +1,4 @@
-package dev.oskar_lab.backend.projects.project_lab
+package dev.oskar_lab.backend.apps.catalog
 
 import groovy.transform.CompileStatic
 import org.springframework.web.bind.annotation.RestController;
@@ -7,10 +7,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 @CompileStatic
 @RestController
-@RequestMapping("/projects")
-class ProjectsController extends AbstractController<ProjectService>{
+@RequestMapping(["/apps", "/projects"])
+class AppsController extends AbstractController<AppService>{
 
-    ProjectsController(ProjectService service){
+    AppsController(AppService service){
         super(service)
     }
 

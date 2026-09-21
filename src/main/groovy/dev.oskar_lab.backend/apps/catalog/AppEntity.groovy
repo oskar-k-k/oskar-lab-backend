@@ -1,4 +1,4 @@
-package dev.oskar_lab.backend.projects.project_lab;
+package dev.oskar_lab.backend.apps.catalog;
 
 import dev.oskar_lab.backend.core.AbstractEntity;
 import jakarta.persistence.Column;
@@ -6,8 +6,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "projects")
-class ProjectEntity extends AbstractEntity{
+@Table(name = "apps")
+class AppEntity extends AbstractEntity{
 
     @Column(nullable = false, length = 64)
     String path;
