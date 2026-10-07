@@ -29,6 +29,22 @@ class TierlistTests {
         assertEquals("finished", s.view(code, token).get("phase"));
         assertEquals(10, ((List<?>)s.view(code, token).get("words")).size());
     }
+    @Test void animalCategorySupportsThirtyRounds() {
+        var s = new TierlistService();
+        var a = s.create("A", "animals", List.of("S", "F"), List.of(), 30);
+        String code = (String)a.get("code"), token = (String)a.get("token");
+        String other = (String)s.join(code, "B").get("token");
+        s.action(code, token, "start", 0, null);
+        Set<String> seen = new HashSet<>();
+        for (int i = 0; i < 30; i++) {
+            assertTrue(seen.add((String)s.view(code, token).get("word")));
+            s.action(code, token, "vote", i, 0);
+            s.action(code, other, "vote", i, 1);
+            s.action(code, token, "next", i, null);
+        }
+        assertEquals("finished", s.view(code, token).get("phase"));
+        assertEquals(30, seen.size());
+    }
     @Test void validatesCustomWordsAndLobbyBoundaries() {
         var s = new TierlistService();
         assertThrows(ResponseStatusException.class, () -> s.create("A", "", List.of("S", "F"), List.of(), 1));
