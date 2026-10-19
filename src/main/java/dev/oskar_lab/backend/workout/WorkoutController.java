@@ -44,6 +44,7 @@ public class WorkoutController {
         service.requireAccount(owner); return service.get(owner, id);
     }
     @PostMapping("/plans")
+    @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
     public ResponseEntity<Plan> create(@RequestHeader("X-User-Id") UUID owner, @Valid @RequestBody SavePlan input) {
         service.requireAccount(owner); return ResponseEntity.status(201).body(service.save(owner, input, true));
     }
@@ -55,6 +56,7 @@ public class WorkoutController {
     }
     /** Appends actual sets to the authenticated user's exercise history. */
     @PostMapping("/logs")
+    @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
     public ResponseEntity<TrackingDtos.Log> record(@RequestHeader("X-User-Id") UUID owner, @Valid @RequestBody TrackingDtos.SaveLog input) {
         service.requireAccount(owner);
         return ResponseEntity.status(201).body(tracking.save(owner, input));

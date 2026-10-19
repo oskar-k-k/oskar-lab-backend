@@ -55,3 +55,20 @@ scripts installed at `/opt/oskar-lab` on the server. Production uses its own
 Postgres instance and volume, separate from Lilsi. A database dump precedes each
 backend update; Flyway then applies pending migrations on startup. Production
 disables automatic baselining. No local user records are copied automatically.
+# OpenAPI
+
+Set `OPENAPI_ENABLED=true` for local API exploration. The running backend serves
+`/v3/api-docs` and `/swagger-ui/index.html`. Documentation is disabled by default
+on deployed instances. Internal operations still require the server bridge key;
+the specification is not an authorization mechanism. Never put real credentials
+in example payloads or generated files. Swagger's external validator and stored
+authorization are disabled; its assets are served locally.
+
+Run `./gradlew test --tests '*OpenApiTests' --rerun-tasks` to export the real
+controller contract to `build/openapi/backend.json` using an isolated H2 database.
+Then run `npm run api:sync` in the sibling frontend and commit its refreshed schema
+and client types. See `frontend/packages/api/README.md` for the full workflow.
+Keep response nullability, required fields and enums accurate when changing DTOs.
+The dynamic auth action map remains runtime-validated by AccountService; its
+OpenAPI action parameter is an enum and its JSON map intentionally allows unknown
+values. No authentication behavior or credential storage is changed.

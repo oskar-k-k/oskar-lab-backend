@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /** Private server-to-server boundary; browsers never receive the bridge key or session token. */
 @RestController
@@ -23,7 +25,10 @@ public class AuthController {
     }
 
     @PostMapping("/{action}")
-    public Map<String, Object> invoke(@PathVariable String action,
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", content =
+        @io.swagger.v3.oas.annotations.media.Content(schema = @Schema(oneOf = {
+            AuthDtos.Identity.class, AuthDtos.Login.class, AuthDtos.LinkRequired.class, AuthDtos.Logout.class})))
+    public Map<String, Object> invoke(@Parameter(schema = @Schema(allowableValues = {"register", "login", "google", "link", "complete", "current", "logout"})) @PathVariable String action,
             @RequestHeader(value = "X-Auth-Bridge", defaultValue = "") String key,
             @RequestHeader(value = "Authorization", defaultValue = "") String authorization,
             @RequestBody Map<String, Object> input) {
