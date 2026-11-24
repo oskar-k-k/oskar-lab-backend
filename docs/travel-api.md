@@ -2,7 +2,8 @@
 
 The travel module is part of the existing backend and PostgreSQL database. Migration
 `V8__add_shared_resources_and_travel.sql` adds its tables; migrations V1–V7 are unchanged.
-No public app catalog entry or automatic Thailand import is created.
+The TravelTime frontend at `/apps/traveltime` provides the authenticated browser adapter.
+Personal trip imports are operator actions and never part of schema migrations or fixtures.
 
 ## Model
 
@@ -129,7 +130,9 @@ browser permission, dependency or third-party asset is introduced. Existing infr
 access/security logs still apply; do not enable request-body, bridge-header or SQL-value logging.
 
 File bytes are stored exclusively through the central `storage.FileStorageService` in
-OrbitStorage, using the `thailand` app project and its scoped key. PostgreSQL holds file IDs,
+OrbitStorage, using the `traveltime` app project and its scoped key. Migration V11 preserves the
+`thailand` namespace on pre-existing attachments and deletion jobs; downloads and deletion
+use the attachment's stored project, never a caller-controlled namespace. PostgreSQL holds file IDs,
 lengths, MIME metadata and SHA-256 hashes. Downloads are verified before returning bytes.
 Uploads are never automatically replayed; a lost upstream response requires operator
 reconciliation rather than silently creating duplicate objects. The previous bytea table is
@@ -171,8 +174,9 @@ and `TRAVEL_TEST_DATABASE_URL=jdbc:postgresql://127.0.0.1:<port>/traveltest`. It
 Flyway and Hibernate validation, checks storage references and deletion/cascades, and never targets production.
 
 `OpenApiTests` exports the real schemas to `build/openapi/backend.json`. Sync this into the
-frontend `@oskar-lab/api` contract and regenerate types. Travel endpoints are backend-only;
-do not invent browser paths before adding an authenticated Next.js adapter. The existing
+frontend `@oskar-lab/api` contract and regenerate types. Travel endpoints remain backend-only;
+the TravelTime Next.js adapter exposes allowlisted same-origin `/api/travel` browser paths
+with central sessions, bounded request bodies, origin checks and private/no-store responses. The existing
 Thailand page reads its migrated JSON/documents through the protected backend storage
 adapter. Converting those records into editable owned trips is a separate integration step.
 Missing source files from another computer cannot be reconstructed by storage migration.
