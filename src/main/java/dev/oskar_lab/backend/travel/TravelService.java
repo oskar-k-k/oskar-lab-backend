@@ -2,6 +2,7 @@ package dev.oskar_lab.backend.travel;
 
 import dev.oskar_lab.backend.access.*;
 import dev.oskar_lab.backend.auth.AuthFailure;
+import dev.oskar_lab.backend.storage.FileStorageService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,14 +20,16 @@ public class TravelService {
     private final TravelEntryRepository entries;
     private final TravelAttachmentRepository attachments;
     private final TravelAttachmentContentRepository contents;
+    private final FileStorageService storage;
 
     public TravelService(ResourceAccessService access, TravelTripRepository trips, TravelEntryRepository entries,
-                         TravelAttachmentRepository attachments, TravelAttachmentContentRepository contents) {
+                         TravelAttachmentRepository attachments, TravelAttachmentContentRepository contents, FileStorageService storage) {
         this.access = access;
         this.trips = trips;
         this.entries = entries;
         this.attachments = attachments;
         this.contents = contents;
+        this.storage = storage;
     }
 
     /** Lists only visible trips, twenty at a time; unverified email addresses cannot claim shares. */
@@ -64,7 +67,7 @@ public class TravelService {
         return tripDto(trips.saveAndFlush(trip), resource, user);
     }
 
-    /** Deletes the trip, all bookings, attachment bytes and sharing addresses atomically. */
+    /** Deletes trip metadata and sharing atomically; cloud bytes are removed through a durable cleanup queue. */
     public void delete(UUID user, UUID tripId, long version) {
         access.requireOwner(user, RESOURCE_TYPE, tripId);
         TravelTrip trip = trip(tripId);
@@ -159,6 +162,7 @@ public class TravelService {
 
     private void deleteEntryRows(TravelEntry entry) {
         for (TravelAttachment attachment : attachments.findByEntryIdOrderByIdAsc(entry.id)) {
+            if (attachment.orbitFileId != null) storage.scheduleDelete("thailand", attachment.orbitFileId);
             contents.deleteById(attachment.id);
             contents.flush();
             attachments.delete(attachment);

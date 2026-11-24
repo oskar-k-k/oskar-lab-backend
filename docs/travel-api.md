@@ -128,18 +128,25 @@ backend/database/backup operators. No new external service, mailbox integration,
 browser permission, dependency or third-party asset is introduced. Existing infrastructure
 access/security logs still apply; do not enable request-body, bridge-header or SQL-value logging.
 
-Small uploads are stored as PostgreSQL bytea in `travel_attachment_contents`, separate
-from metadata so lists do not load their contents. This first iteration favors transactional
-deletion, one backup boundary and independence from app deployments over an additional
-object-storage service. It is intended for a small installation, not a large media library.
+File bytes are stored exclusively through the central `storage.FileStorageService` in
+OrbitStorage, using the `thailand` app project and its scoped key. PostgreSQL holds file IDs,
+lengths, MIME metadata and SHA-256 hashes. Downloads are verified before returning bytes.
+Uploads are never automatically replayed; a lost upstream response requires operator
+reconciliation rather than silently creating duplicate objects. The previous bytea table is
+migration-only: `/internal/storage/migrations/travel` is disabled by default and copies a
+bounded batch, verifies each cloud round trip, then removes legacy bytes. Normal reads/writes
+never fall back to database/file-system contents.
+
 PDF, PNG and JPEG are accepted after size, filename and signature checks: at most 5 MiB/file,
-20 attachments/entry, 100 attachments/trip, 100 grants/trip and 1000 entries/trip. The HTTP
-multipart request limit is 6 MiB. There is no inline active-document preview, SVG upload,
-malware-scanning claim or external URL fetch. Signature checks do not prove a file harmless.
+20 attachments/entry, 100 attachments/trip, 100 grants/trip and 1000 entries/trip. HTTP multipart
+requests are capped at 6 MiB. OrbitStorage adds app-wide quota, daily byte, rate and concurrency
+limits. There is no inline active-document preview, SVG upload or malware-scanning claim.
 Owners remain responsible for permission to upload/share their documents and images.
 
 Records remain until owner deletion or an operator-handled deletion request. Deleting an
-entry/trip removes its corresponding metadata and bytes in the same transaction. PostgreSQL
+entry/trip removes its metadata and commits a durable cloud-deletion intent in the same
+transaction. A background worker retries OrbitStorage deletions; no cloud deletion is
+performed for a rolled-back domain deletion. Physical deletion can lag while storage is down. PostgreSQL
 foreign keys also cascade owner-account deletion through resources and trip contents.
 Revoking a share deletes that grant, not the owner's data. Backups can retain older copies;
 backup retention and physical erasure must follow the actual operator policy, which has not
@@ -161,10 +168,11 @@ date-line crossings and unknown hours. Fixtures contain no real travel or accoun
 `TravelPostgresTests` is opt-in and requires an isolated local PostgreSQL database named
 `traveltest`, user `traveltest`, synthetic password `synthetic-travel-database-password`,
 and `TRAVEL_TEST_DATABASE_URL=jdbc:postgresql://127.0.0.1:<port>/traveltest`. It enables
-Flyway and Hibernate validation, checks bytea and deletion/cascades, and never targets production.
+Flyway and Hibernate validation, checks storage references and deletion/cascades, and never targets production.
 
 `OpenApiTests` exports the real schemas to `build/openapi/backend.json`. Sync this into the
 frontend `@oskar-lab/api` contract and regenerate types. Travel endpoints are backend-only;
 do not invent browser paths before adding an authenticated Next.js adapter. The existing
-Thailand page still uses its private JSON data source; migrating that UI/importing original
-bookings is a separate integration step, not an automatic side effect of these endpoints.
+Thailand page reads its migrated JSON/documents through the protected backend storage
+adapter. Converting those records into editable owned trips is a separate integration step.
+Missing source files from another computer cannot be reconstructed by storage migration.

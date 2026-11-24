@@ -1,6 +1,10 @@
 package dev.oskar_lab.backend;
 
 import dev.oskar_lab.backend.auth.*;
+import dev.oskar_lab.backend.storage.*;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,12 +23,21 @@ import static org.junit.jupiter.api.Assertions.*;
 class TravelApiTests {
     private static final String BRIDGE = "synthetic-travel-test-bridge-at-least-32-characters";
     @Value("${local.server.port}") int port;
+    @MockitoBean OrbitStorageClient orbit;
+    private final Map<UUID, byte[]> cloudFiles = new java.util.concurrent.ConcurrentHashMap<>();
+    private void configureCloud() {
+        when(orbit.upload(anyString(), anyString(), anyString(), any(byte[].class))).thenAnswer(call -> {
+            UUID id = UUID.randomUUID(); byte[] bytes = call.getArgument(3); cloudFiles.put(id, bytes.clone());
+            return new OrbitStorageClient.StoredFile(id, call.getArgument(2), bytes.length);
+        });
+        when(orbit.download(anyString(), any(UUID.class), anyLong(), anyString())).thenAnswer(call -> cloudFiles.get(call.getArgument(1)));
+    }
     @Autowired AccountRepository accounts;
     @Autowired AccountService accountService;
     private final ObjectMapper json = new ObjectMapper();
     private UUID owner;
 
-    @BeforeEach void setup() { owner = account(false).id; }
+    @BeforeEach void setup() { configureCloud(); owner = account(false).id; }
 
     private Account account(boolean verified) {
         Account account = new Account();

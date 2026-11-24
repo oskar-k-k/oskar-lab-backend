@@ -1,6 +1,10 @@
 package dev.oskar_lab.backend;
 
 import dev.oskar_lab.backend.auth.*;
+import dev.oskar_lab.backend.storage.*;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 import dev.oskar_lab.backend.access.*;
 import dev.oskar_lab.backend.travel.*;
 import org.junit.jupiter.api.Test;
@@ -35,10 +39,20 @@ class TravelPostgresTests {
     @Autowired TravelService travel;
     @Autowired TravelAttachmentService attachments;
     @Autowired ResourceAccessService access;
+    @MockitoBean OrbitStorageClient orbit;
+    private final Map<UUID, byte[]> cloudFiles = new java.util.concurrent.ConcurrentHashMap<>();
+    private void configureCloud() {
+        when(orbit.upload(anyString(), anyString(), anyString(), any(byte[].class))).thenAnswer(call -> {
+            UUID id = UUID.randomUUID(); byte[] bytes = call.getArgument(3); cloudFiles.put(id, bytes.clone());
+            return new OrbitStorageClient.StoredFile(id, call.getArgument(2), bytes.length);
+        });
+        when(orbit.download(anyString(), any(UUID.class), anyLong(), anyString())).thenAnswer(call -> cloudFiles.get(call.getArgument(1)));
+    }
     @Autowired AccountRepository accounts;
     @Autowired JdbcTemplate jdbc;
 
     @Test void migratesValidatesAndDeletesPrivateContentOnPostgres() {
+        configureCloud();
         Account owner = new Account();
         owner.email = UUID.randomUUID() + "@example.invalid";
         owner.username = UUID.randomUUID().toString().substring(0, 30); owner.usernameKey = owner.username;
@@ -58,7 +72,12 @@ class TravelPostgresTests {
         assertEquals(0, jdbc.queryForObject("select count(*) from platform_resource_viewers where resource_id = ?", Integer.class, trip.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from travel_points where entry_id = ?", Integer.class, entry.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from platform_resources where id = ?", Integer.class, trip.id()));
+        var secondTrip = travel.create(owner.id, new SaveTrip("Account deletion fixture", "", LocalDate.of(2030, 12, 1), LocalDate.of(2030, 12, 10), 0L));
+        var secondEntry = travel.createEntry(owner.id, secondTrip.id(), new SaveEntry(EntryType.ACTIVITY, "Example activity", "", "", List.of(point), 0L));
+        var secondAttachment = attachments.upload(owner.id, secondTrip.id(), secondEntry.id(), null, "example.pdf", "application/pdf", bytes);
+        UUID cloudId = jdbc.queryForObject("select orbit_file_id from travel_attachments where id = ?", UUID.class, secondAttachment.id());
         accounts.deleteById(owner.id);
         assertEquals(0, jdbc.queryForObject("select count(*) from platform_resources where id = ?", Integer.class, unrelated.id));
+        assertEquals(1, jdbc.queryForObject("select count(*) from platform_file_deletions where orbit_file_id = ?", Integer.class, cloudId));
     }
 }

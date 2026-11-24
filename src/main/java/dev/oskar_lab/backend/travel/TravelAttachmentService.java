@@ -1,25 +1,26 @@
 package dev.oskar_lab.backend.travel;
 
 import dev.oskar_lab.backend.auth.AuthFailure;
+import dev.oskar_lab.backend.storage.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import static dev.oskar_lab.backend.travel.TravelDtos.*;
 import static dev.oskar_lab.backend.travel.TravelTypes.*;
 
-/** Keeps small private PDFs/images transactional; no external URLs, public files or filesystem paths. */
+/** Stores document references in PostgreSQL and private bytes exclusively in the app's OrbitStorage project. */
 @Service
 @Transactional
 public class TravelAttachmentService {
     public static final int MAX_BYTES = 5 * 1024 * 1024;
     private final TravelService travel;
     private final TravelAttachmentRepository attachments;
-    private final TravelAttachmentContentRepository contents;
+    private final FileStorageService storage;
 
-    public TravelAttachmentService(TravelService travel, TravelAttachmentRepository attachments, TravelAttachmentContentRepository contents) {
+    public TravelAttachmentService(TravelService travel, TravelAttachmentRepository attachments, FileStorageService storage) {
         this.travel = travel;
         this.attachments = attachments;
-        this.contents = contents;
+        this.storage = storage;
     }
 
     /** Lists at most twenty attachments without loading their bytes. */
@@ -42,10 +43,10 @@ public class TravelAttachmentService {
         TravelAttachment attachment = new TravelAttachment();
         attachment.entryId = entry; attachment.pointRole = role; attachment.filename = filename.strip();
         attachment.mediaType = mediaType; attachment.size = bytes.length;
+        var stored = storage.upload("thailand", filename, mediaType, bytes);
+        attachment.orbitFileId = stored.id();
+        attachment.sha256 = OrbitStorageClient.hash(bytes);
         attachments.saveAndFlush(attachment);
-        TravelAttachmentContent content = new TravelAttachmentContent();
-        content.id = attachment.id; content.bytes = bytes.clone();
-        contents.saveAndFlush(content);
         return dto(attachment);
     }
 
@@ -54,15 +55,15 @@ public class TravelAttachmentService {
     public Download download(UUID user, UUID trip, UUID entry, UUID id) {
         travel.requireEntry(user, trip, entry, false);
         TravelAttachment attachment = attachment(entry, id);
-        return new Download(dto(attachment), contents.findById(id).orElseThrow(() -> new AuthFailure(404, "notFound")).bytes);
+        if (attachment.orbitFileId == null) throw new StorageFailure(503, "storageMigrationRequired");
+        return new Download(dto(attachment), storage.download("thailand", attachment.orbitFileId, attachment.size, attachment.sha256));
     }
 
     /** Deletes metadata and bytes together; viewers cannot remove documents. */
     public void delete(UUID user, UUID trip, UUID entry, UUID id) {
         travel.requireEntry(user, trip, entry, true);
         TravelAttachment attachment = attachment(entry, id);
-        contents.deleteById(id);
-        contents.flush();
+        if (attachment.orbitFileId != null) storage.scheduleDelete("thailand", attachment.orbitFileId);
         attachments.delete(attachment);
     }
 

@@ -9,4 +9,5 @@ public interface TravelAttachmentRepository extends JpaRepository<TravelAttachme
     List<TravelAttachment> findByEntryIdOrderByIdAsc(UUID entryId);
     @Query("select count(a) from TravelAttachment a where a.entryId in (select e.id from TravelEntry e where e.tripId = :trip)")
     long countForTrip(UUID trip);
+    List<TravelAttachment> findTop20ByOrbitFileIdIsNullOrderByIdAsc();
 }
