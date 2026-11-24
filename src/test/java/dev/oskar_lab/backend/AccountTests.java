@@ -14,6 +14,19 @@ class AccountTests {
     @Autowired AccountService service;
     @Autowired AccountRepository repository;
 
+    @Test void recordsEmailProofOnlyAfterVerifiedProviderLoginAndClearsMismatches() {
+        service.register(registration("travel_local"));
+        Account local = repository.findByEmail("travel_local@example.com").orElseThrow();
+        assertNull(local.verifiedEmail);
+        assertThrows(AuthFailure.class, () -> service.google(Map.of("subject", "travel-proof", "email", local.email, "emailVerified", false)));
+        service.linkGoogle(Map.of("subject", "travel-proof", "email", local.email, "password", "long test password"));
+        assertNull(repository.findById(local.id).orElseThrow().verifiedEmail);
+        service.google(Map.of("subject", "travel-proof", "email", local.email, "emailVerified", true));
+        assertEquals(local.email, repository.findById(local.id).orElseThrow().verifiedEmail);
+        service.google(Map.of("subject", "travel-proof", "email", "changed@example.invalid", "emailVerified", true));
+        assertNull(repository.findById(local.id).orElseThrow().verifiedEmail);
+    }
+
     private Map<String, Object> registration(String name) {
         return Map.of("username", name, "email", name + "@example.com", "password", "long test password", "passwordRepeat", "long test password", "acceptTerms", true, "termsVersion", AccountService.TERMS_VERSION);
     }

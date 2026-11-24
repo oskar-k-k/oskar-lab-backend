@@ -12,6 +12,7 @@ public class Account {
     @Column(unique = true, length = 32) public String username;
     @Column(unique = true, length = 32) public String usernameKey;
     @Column(nullable = false, unique = true, length = 254) public String email;
+    @Column(length = 254) public String verifiedEmail;
     @Column(length = 256) public String passwordHash;
     @Column(unique = true) public String googleSubject;
     public Instant termsAcceptedAt;

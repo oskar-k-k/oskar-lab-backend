@@ -13,6 +13,12 @@ import org.slf4j.LoggerFactory
 class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler)
 
+    /** Rejects oversized multipart bodies before controller dispatch without logging submitted data. */
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException)
+    ResponseEntity<Map<String, String>> handleUploadLimit() {
+        return ResponseEntity.status(413).header("Cache-Control", "private, no-store").body([code: "fileTooLarge"])
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException)
     ResponseEntity<ApiExceptionResponse> handleValidation(
             MethodArgumentNotValidException exception,

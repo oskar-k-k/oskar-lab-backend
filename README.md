@@ -33,6 +33,14 @@ Flyway version 1 renames an existing `projects` table to `apps`, preserving IDs 
 
 The database remains shared. Product separation in the frontend does not require separate databases. Authentication remains managed centrally by the platform frontend.
 
+## Travel timelines
+
+The travel module adds typed bookings with connected departure/arrival or check-in/check-out
+points, private attachments and reusable platform owner/viewer permissions. See
+[docs/travel-api.md](docs/travel-api.md) for endpoints, payloads, verified-email invitations,
+storage/deletion behavior, migration and tests. It uses the existing backend and database;
+the legacy Thailand page is not automatically migrated or deployed by this change.
+
 ## Central accounts
 
 Migration `V2__create_platform_accounts.sql` adds platform accounts and revocable sessions without changing catalog data. `AccountService` owns registration, password verification, Google linking and onboarding. Public callers cannot invoke `/internal/auth/*`: the platform server supplies `X-Auth-Bridge`, checked against `AUTH_BRIDGE_SECRET` using a constant-time comparison. Use TLS/private networking between services in production.
@@ -71,4 +79,4 @@ and client types. See `frontend/packages/api/README.md` for the full workflow.
 Keep response nullability, required fields and enums accurate when changing DTOs.
 The dynamic auth action map remains runtime-validated by AccountService; its
 OpenAPI action parameter is an enum and its JSON map intentionally allows unknown
-values. No authentication behavior or credential storage is changed.
+values. Contract generation itself does not alter authentication or credential storage.

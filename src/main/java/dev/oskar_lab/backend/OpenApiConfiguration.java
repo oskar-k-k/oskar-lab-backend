@@ -33,7 +33,7 @@ public class OpenApiConfiguration {
           api.getPaths().forEach((path, item) -> {
             if (path.startsWith("/internal/")) item.readOperations().forEach(operation -> {
                 operation.addSecurityItem(new SecurityRequirement().addList("bridge"));
-                for (var status : List.of("400", "401", "403", "404", "409", "429")) {
+                for (var status : List.of("400", "401", "403", "404", "409", "413", "415", "429")) {
                     operation.getResponses().addApiResponse(status, new ApiResponse().description("Request rejected; code is safe for localized feedback")
                         .content(new Content().addMediaType("application/json", new MediaType().schema(
                             new ObjectSchema().addProperty("code", new StringSchema()).required(List.of("code"))))));
@@ -45,7 +45,8 @@ public class OpenApiConfiguration {
           auth.getRequestBody().getContent().values().forEach(media -> media.getSchema().setAdditionalProperties(true));
           // These DTOs always serialize every field; validation annotations alone omit response requirements.
           var schemas = api.getComponents().getSchemas();
-          for (var name : List.of("ExerciseDto", "Entry", "Plan", "PlanPage", "SavePlan", "SetResult", "SaveLog", "Log", "History", "AppEntity", "PageAppEntity")) {
+          for (var name : List.of("ExerciseDto", "Entry", "Plan", "PlanPage", "SavePlan", "SetResult", "SaveLog", "Log", "History", "AppEntity", "PageAppEntity",
+                  "TravelTrip", "TravelTripPage", "TravelEntry", "TravelEntryPage", "TravelPoint", "TravelViewer", "TravelAttachment")) {
               var schema = schemas.get(name);
               if (schema == null || schema.getProperties() == null) continue;
               var required = new ArrayList<String>(schema.getProperties().keySet());

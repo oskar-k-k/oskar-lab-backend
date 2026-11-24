@@ -31,6 +31,10 @@ class OpenApiTests {
         }
         assertTrue(paths.path("/internal/workout/plans").path("post").path("responses").has("201"));
         assertTrue(paths.path("/internal/workout/plans").path("get").path("security").get(0).has("bridge"));
+        assertTrue(paths.has("/internal/travel/trips"));
+        assertTrue(paths.has("/internal/travel/trips/{tripId}/entries/{entryId}/attachments/{attachmentId}"));
+        assertTrue(paths.path("/internal/travel/trips").path("get").path("security").get(0).has("bridge"));
+        assertTrue(contract.path("components").path("schemas").path("TravelEntry").path("required").toString().contains("points"));
         assertTrue(contract.path("components").path("schemas").path("Entry").path("properties").path("targetMin").path("nullable").asBoolean());
         var denied = HttpClient.newHttpClient().send(HttpRequest.newBuilder(
             URI.create("http://localhost:" + port + "/internal/workout/templates")).GET().build(), HttpResponse.BodyHandlers.ofString());

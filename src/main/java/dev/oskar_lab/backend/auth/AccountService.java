@@ -62,12 +62,17 @@ public class AccountService {
         String email = text(input, "email").strip().toLowerCase(Locale.ROOT);
         if (subject.isBlank() || subject.length() > 255 || email.length() > 254 || !email.contains("@") || !Boolean.TRUE.equals(input.get("emailVerified"))) fail(403, "unverifiedGoogle");
         Account account = accounts.findByGoogleSubject(subject).orElse(null);
-        if (account != null) return createSession(account);
+        if (account != null) {
+            // A provider subject alone does not prove ownership of an old or changed email.
+            account.verifiedEmail = account.email.equals(email) ? email : null;
+            return createSession(account);
+        }
         account = accounts.findByEmail(email).orElse(null);
         if (account != null) return Map.of("linkRequired", true);
         account = new Account();
         account.email = email;
         account.googleSubject = subject;
+        account.verifiedEmail = email;
         accounts.saveAndFlush(account);
         return createSession(account);
     }
