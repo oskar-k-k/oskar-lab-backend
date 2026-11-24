@@ -22,8 +22,8 @@ public class LegacyFileMigration {
         for (var attachment : attachments.findTop20ByOrbitFileIdIsNullOrderByIdAsc()) {
             var content = contents.findById(attachment.id).orElseThrow(() -> new StorageFailure(503, "legacyContentMissing"));
             String hash = OrbitStorageClient.hash(content.bytes);
-            var uploaded = storage.upload("thailand", attachment.filename, attachment.mediaType, content.bytes);
-            storage.download("thailand", uploaded.id(), attachment.size, hash);
+            var uploaded = storage.upload(attachment.storageProject, attachment.filename, attachment.mediaType, content.bytes);
+            storage.download(attachment.storageProject, uploaded.id(), attachment.size, hash);
             attachment.orbitFileId = uploaded.id(); attachment.sha256 = hash;
             attachments.saveAndFlush(attachment);
             contents.delete(content);

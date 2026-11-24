@@ -75,9 +75,10 @@ class TravelPostgresTests {
         var secondTrip = travel.create(owner.id, new SaveTrip("Account deletion fixture", "", LocalDate.of(2030, 12, 1), LocalDate.of(2030, 12, 10), 0L));
         var secondEntry = travel.createEntry(owner.id, secondTrip.id(), new SaveEntry(EntryType.ACTIVITY, "Example activity", "", "", List.of(point), 0L));
         var secondAttachment = attachments.upload(owner.id, secondTrip.id(), secondEntry.id(), null, "example.pdf", "application/pdf", bytes);
+        assertEquals("traveltime", jdbc.queryForObject("select storage_project from travel_attachments where id = ?", String.class, secondAttachment.id()));
         UUID cloudId = jdbc.queryForObject("select orbit_file_id from travel_attachments where id = ?", UUID.class, secondAttachment.id());
         accounts.deleteById(owner.id);
         assertEquals(0, jdbc.queryForObject("select count(*) from platform_resources where id = ?", Integer.class, unrelated.id));
-        assertEquals(1, jdbc.queryForObject("select count(*) from platform_file_deletions where orbit_file_id = ?", Integer.class, cloudId));
+        assertEquals(1, jdbc.queryForObject("select count(*) from platform_file_deletions where orbit_file_id = ? and project = 'traveltime'", Integer.class, cloudId));
     }
 }

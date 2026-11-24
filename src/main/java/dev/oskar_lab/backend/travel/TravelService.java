@@ -162,7 +162,7 @@ public class TravelService {
 
     private void deleteEntryRows(TravelEntry entry) {
         for (TravelAttachment attachment : attachments.findByEntryIdOrderByIdAsc(entry.id)) {
-            if (attachment.orbitFileId != null) storage.scheduleDelete("thailand", attachment.orbitFileId);
+            if (attachment.orbitFileId != null) storage.scheduleDelete(attachment.storageProject, attachment.orbitFileId);
             contents.deleteById(attachment.id);
             contents.flush();
             attachments.delete(attachment);

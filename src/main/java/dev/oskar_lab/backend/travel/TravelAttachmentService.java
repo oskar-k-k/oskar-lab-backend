@@ -43,7 +43,7 @@ public class TravelAttachmentService {
         TravelAttachment attachment = new TravelAttachment();
         attachment.entryId = entry; attachment.pointRole = role; attachment.filename = filename.strip();
         attachment.mediaType = mediaType; attachment.size = bytes.length;
-        var stored = storage.upload("thailand", filename, mediaType, bytes);
+        var stored = storage.upload(attachment.storageProject, filename, mediaType, bytes);
         attachment.orbitFileId = stored.id();
         attachment.sha256 = OrbitStorageClient.hash(bytes);
         attachments.saveAndFlush(attachment);
@@ -56,14 +56,14 @@ public class TravelAttachmentService {
         travel.requireEntry(user, trip, entry, false);
         TravelAttachment attachment = attachment(entry, id);
         if (attachment.orbitFileId == null) throw new StorageFailure(503, "storageMigrationRequired");
-        return new Download(dto(attachment), storage.download("thailand", attachment.orbitFileId, attachment.size, attachment.sha256));
+        return new Download(dto(attachment), storage.download(attachment.storageProject, attachment.orbitFileId, attachment.size, attachment.sha256));
     }
 
     /** Deletes metadata and bytes together; viewers cannot remove documents. */
     public void delete(UUID user, UUID trip, UUID entry, UUID id) {
         travel.requireEntry(user, trip, entry, true);
         TravelAttachment attachment = attachment(entry, id);
-        if (attachment.orbitFileId != null) storage.scheduleDelete("thailand", attachment.orbitFileId);
+        if (attachment.orbitFileId != null) storage.scheduleDelete(attachment.storageProject, attachment.orbitFileId);
         attachments.delete(attachment);
     }
 

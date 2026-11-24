@@ -15,5 +15,6 @@ public class TravelAttachment {
     @Column(nullable = false, length = 40) public String mediaType;
     @Column(nullable = false) public long size;
     public UUID orbitFileId;
+    @Column(nullable = false, length = 64) public String storageProject = "traveltime";
     @Column(length = 64) public String sha256;
 }
