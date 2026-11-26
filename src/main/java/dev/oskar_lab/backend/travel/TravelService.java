@@ -149,13 +149,13 @@ public class TravelService {
             if (row == null) { row = new TravelPoint(); row.entry = entry; entry.points.add(row); }
             row.position = index;
             row.role = point.role(); row.date = point.date(); row.time = point.time(); row.timeZone = point.timeZone();
-            row.utcOffset = point.utcOffset(); row.timeMeaning = point.timeMeaning(); row.placeName = point.placeName(); row.address = point.address();
+            row.utcOffset = point.utcOffset(); row.timeMeaning = point.timeMeaning(); row.placeName = point.placeName(); row.address = point.address(); row.mapEmbedUrl = point.mapEmbedUrl();
         }
     }
 
     private Entry entryDto(TravelEntry entry) {
         var points = entry.points.stream().sorted(Comparator.comparingInt(p -> p.position)).map(p -> new Point(p.role, p.date, p.time,
-            p.timeZone, p.utcOffset, p.timeMeaning, p.placeName, p.address)).toList();
+            p.timeZone, p.utcOffset, p.timeMeaning, p.placeName, p.address, p.mapEmbedUrl)).toList();
         return new Entry(entry.id, entry.tripId, entry.type, entry.title, entry.notes, entry.reference,
             points, TravelRules.durationMinutes(points), entry.version);
     }

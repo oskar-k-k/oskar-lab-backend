@@ -58,9 +58,10 @@ class TravelPostgresTests {
         owner.username = UUID.randomUUID().toString().substring(0, 30); owner.usernameKey = owner.username;
         owner.termsAcceptedAt = Instant.now(); accounts.saveAndFlush(owner);
         var trip = travel.create(owner.id, new SaveTrip("Synthetic journey", "", LocalDate.of(2030, 12, 1), LocalDate.of(2030, 12, 10), 0L));
-        var point = new Point(PointRole.START, LocalDate.of(2030, 12, 2), null, "Asia/Bangkok", null, TimeMeaning.UNSPECIFIED, "Example place", "");
+        var point = new Point(PointRole.START, LocalDate.of(2030, 12, 2), null, "Asia/Bangkok", null, TimeMeaning.UNSPECIFIED, "Example place", "", "https://www.google.com/maps/embed?pb=!1m18!synthetic");
         var entry = travel.createEntry(owner.id, trip.id(), new SaveEntry(EntryType.ACTIVITY, "Example activity", "", "", List.of(point), 0L));
         assertNull(travel.getEntry(owner.id, trip.id(), entry.id()).points().getFirst().time());
+        assertEquals(point.mapEmbedUrl(), travel.getEntry(owner.id, trip.id(), entry.id()).points().getFirst().mapEmbedUrl());
         byte[] bytes = "%PDF-1.7 synthetic fixture".getBytes(StandardCharsets.UTF_8);
         var attachment = attachments.upload(owner.id, trip.id(), entry.id(), PointRole.START, "example.pdf", "application/pdf", bytes);
         assertArrayEquals(bytes, attachments.download(owner.id, trip.id(), entry.id(), attachment.id()).bytes());

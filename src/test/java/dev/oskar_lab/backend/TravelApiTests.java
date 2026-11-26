@@ -245,4 +245,20 @@ class TravelApiTests {
         assertEquals(204, call("DELETE", entry + "/attachments/" + id, null, owner).statusCode());
         assertEquals(0, json.readTree(call("GET", entry + "/attachments", null, owner).body()).size());
     }
+    @Test void storesStationEmbedLinksAndRejectsUnsafeSources() throws Exception {
+        String trip = createTrip();
+        ObjectNode input = entryInput("ACTIVITY");
+        String embed = "https://www.google.com/maps/embed?pb=!1m18!synthetic";
+        ((ObjectNode) input.withArray("points").get(0)).put("mapEmbedUrl", embed);
+        var created = call("POST", trip + "/entries", input.toString(), owner);
+        assertEquals(201, created.statusCode(), created.body());
+        var body = json.readTree(created.body());
+        assertEquals(embed, body.get("points").get(0).get("mapEmbedUrl").asText());
+        String entry = trip + "/entries/" + body.get("id").asText();
+        assertEquals(404, call("GET", entry, null, account(false).id).statusCode());
+        var read = json.readTree(call("GET", entry, null, owner).body());
+        assertEquals(embed, read.get("points").get(0).get("mapEmbedUrl").asText());
+        ((ObjectNode) input.withArray("points").get(0)).put("mapEmbedUrl", "https://evil.invalid/maps/embed?pb=x");
+        assertEquals(400, call("POST", trip + "/entries", input.toString(), owner).statusCode());
+    }
 }

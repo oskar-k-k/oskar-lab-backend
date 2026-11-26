@@ -180,3 +180,15 @@ with central sessions, bounded request bodies, origin checks and private/no-stor
 Thailand page reads its migrated JSON/documents through the protected backend storage
 adapter. Converting those records into editable owned trips is a separate integration step.
 Missing source files from another computer cannot be reconstructed by storage migration.
+
+
+### Optional per-point Maps share embeds
+
+`TravelPoint.mapEmbedUrl` is nullable and stores only a user-supplied key-free Google Maps
+share embed (`https://www.google.com/maps/embed?pb=...`, optional `hl`). Arbitrary hosts,
+credentials, API-key paths/parameters, fragments and duplicate/unknown parameters are rejected.
+The server never requests the URL or geocodes the address. Existing owner/viewer permissions
+apply to reading/writing this field. It is deleted with its point; existing backup retention
+applies. Browsers must request separate consent before loading the external iframe. No Google
+Cloud credentials or billing account is needed for these saved share embeds. Accuracy depends
+on selecting the correct place in Google Maps before copying its embed link.

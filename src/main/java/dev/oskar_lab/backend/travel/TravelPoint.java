@@ -20,4 +20,5 @@ public class TravelPoint {
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 24) public TimeMeaning timeMeaning;
     @Column(nullable = false, length = 200) public String placeName;
     @Column(nullable = false, length = 1000) public String address = "";
+    @Column(length = 16000) public String mapEmbedUrl;
 }

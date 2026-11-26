@@ -1,6 +1,9 @@
 package dev.oskar_lab.backend.travel;
 
 import java.time.*;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import static dev.oskar_lab.backend.travel.TravelDtos.*;
 import static dev.oskar_lab.backend.travel.TravelTypes.*;
@@ -57,7 +60,29 @@ public final class TravelRules {
             offset = selected.toString();
         }
         return new Point(point.role(), point.date(), point.time(), zone.getId(), offset,
-            point.timeMeaning(), point.placeName().strip(), point.address() == null ? "" : point.address().strip());
+            point.timeMeaning(), point.placeName().strip(), point.address() == null ? "" : point.address().strip(), normalizeMapEmbedUrl(point.mapEmbedUrl()));
+    }
+
+    /** Allows only key-free Google Maps share embeds, never arbitrary frames or API-key URLs. */
+    public static String normalizeMapEmbedUrl(String value) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = value.strip();
+        URI uri = URI.create(normalized);
+        if (normalized.length() > 16000 || !"https".equals(uri.getScheme()) ||
+            !"www.google.com".equals(uri.getHost()) || uri.getRawUserInfo() != null ||
+            uri.getPort() != -1 || uri.getFragment() != null || !"/maps/embed".equals(uri.getRawPath()) ||
+            uri.getRawQuery() == null) throw new IllegalArgumentException();
+        boolean hasPlace = false;
+        Set<String> seen = new HashSet<>();
+        for (String parameter : uri.getRawQuery().split("&")) {
+            String[] pair = parameter.split("=", 2);
+            String key = URLDecoder.decode(pair[0], StandardCharsets.UTF_8);
+            if (!Set.of("pb", "hl").contains(key) || !seen.add(key) || pair.length != 2 || pair[1].isBlank())
+                throw new IllegalArgumentException();
+            if (key.equals("pb")) hasPlace = true;
+        }
+        if (!hasPlace) throw new IllegalArgumentException();
+        return normalized;
     }
 
     private static Instant instant(Point point) {

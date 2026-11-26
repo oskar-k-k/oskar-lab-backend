@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TravelRulesTests {
     private Point point(PointRole role, String date, String time, String zone, String offset, TimeMeaning meaning) {
-        return new Point(role, LocalDate.parse(date), time == null ? null : LocalTime.parse(time), zone, offset, meaning, "Example place", "Example address");
+        return new Point(role, LocalDate.parse(date), time == null ? null : LocalTime.parse(time), zone, offset, meaning, "Example place", "Example address", null);
     }
 
     @Test void computesFlightDurationAcrossTimeZonesAndMidnight() {
@@ -63,5 +63,16 @@ class TravelRulesTests {
         assertEquals("+01:00", points.getFirst().utcOffset());
         assertThrows(IllegalArgumentException.class, () -> TravelRules.normalize(EntryType.ACTIVITY,
             List.of(point(PointRole.START, "2030-10-27", "02:30", "Europe/Berlin", "+03:00", TimeMeaning.EXACT))));
+    }
+    @Test void acceptsOnlyKeyFreeGoogleShareEmbeds() {
+        String valid = "https://www.google.com/maps/embed?pb=!1m18!example";
+        assertEquals(valid, TravelRules.normalizeMapEmbedUrl(valid));
+        assertNull(TravelRules.normalizeMapEmbedUrl(" "));
+        for (String invalid : List.of("javascript:alert(1)", "https://evil.invalid/maps/embed?pb=x",
+            "https://www.google.com.evil.invalid/maps/embed?pb=x", "https://www.google.com/maps/embed/v1/place?key=x&q=y",
+            "https://user@www.google.com/maps/embed?pb=x", "https://www.google.com/maps/embed?pb=x&key=secret",
+            "https://www.google.com/maps/embed?pb=x&pb=y", "https://www.google.com/maps/embed?hl=de")) {
+            assertThrows(IllegalArgumentException.class, () -> TravelRules.normalizeMapEmbedUrl(invalid));
+        }
     }
 }
