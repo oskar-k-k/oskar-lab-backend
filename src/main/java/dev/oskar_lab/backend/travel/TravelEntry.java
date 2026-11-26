@@ -15,6 +15,7 @@ public class TravelEntry {
     @Column(nullable = false, length = 200) public String title;
     @Column(nullable = false, length = 4000) public String notes = "";
     @Column(nullable = false, length = 120) public String reference = "";
+    @Column(nullable = false, length = 160) public String bookingSource = "";
     @Column(nullable = false) public LocalDate sortDate;
     @Column(nullable = false) public LocalTime sortTime;
     @Column(nullable = false) public Instant updatedAt = Instant.now();

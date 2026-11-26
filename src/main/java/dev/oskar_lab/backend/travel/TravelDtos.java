@@ -32,11 +32,11 @@ public final class TravelDtos {
     public record SaveEntry(@NotNull EntryType type, @NotBlank @Size(max = 200) String title,
         @Size(max = 4000) String notes, @Size(max = 120) String reference,
         @NotNull @Size(min = 1, max = 2) List<@NotNull @Valid Point> points,
-        @NotNull @PositiveOrZero Long version) {}
+        @NotNull @PositiveOrZero Long version, @Size(max = 160) String bookingSource) {}
 
     @Schema(name = "TravelEntry")
     public record Entry(UUID id, UUID tripId, EntryType type, String title, String notes, String reference,
-                        List<Point> points, @Schema(nullable = true) Long durationMinutes, long version) {}
+                        List<Point> points, @Schema(nullable = true) Long durationMinutes, long version, String bookingSource) {}
 
     @Schema(name = "TravelEntryPage")
     public record EntryPage(List<Entry> entries, boolean hasMore) {}

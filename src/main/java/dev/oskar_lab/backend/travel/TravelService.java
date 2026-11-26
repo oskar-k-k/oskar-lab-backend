@@ -138,6 +138,7 @@ public class TravelService {
         entry.title = input.title().strip();
         entry.notes = text(input.notes());
         entry.reference = text(input.reference());
+        if (input.bookingSource() != null) entry.bookingSource = text(input.bookingSource());
         entry.sortDate = normalized.getFirst().date();
         entry.sortTime = normalized.getFirst().time() == null ? LocalTime.of(23, 59, 59) : normalized.getFirst().time();
         entry.updatedAt = Instant.now();
@@ -157,7 +158,7 @@ public class TravelService {
         var points = entry.points.stream().sorted(Comparator.comparingInt(p -> p.position)).map(p -> new Point(p.role, p.date, p.time,
             p.timeZone, p.utcOffset, p.timeMeaning, p.placeName, p.address, p.mapEmbedUrl)).toList();
         return new Entry(entry.id, entry.tripId, entry.type, entry.title, entry.notes, entry.reference,
-            points, TravelRules.durationMinutes(points), entry.version);
+            points, TravelRules.durationMinutes(points), entry.version, entry.bookingSource);
     }
 
     private void deleteEntryRows(TravelEntry entry) {

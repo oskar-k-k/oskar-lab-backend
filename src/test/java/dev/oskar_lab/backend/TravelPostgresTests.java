@@ -59,8 +59,9 @@ class TravelPostgresTests {
         owner.termsAcceptedAt = Instant.now(); accounts.saveAndFlush(owner);
         var trip = travel.create(owner.id, new SaveTrip("Synthetic journey", "", LocalDate.of(2030, 12, 1), LocalDate.of(2030, 12, 10), 0L));
         var point = new Point(PointRole.START, LocalDate.of(2030, 12, 2), null, "Asia/Bangkok", null, TimeMeaning.UNSPECIFIED, "Example place", "", "https://www.google.com/maps/embed?pb=!1m18!synthetic");
-        var entry = travel.createEntry(owner.id, trip.id(), new SaveEntry(EntryType.ACTIVITY, "Example activity", "", "", List.of(point), 0L));
+        var entry = travel.createEntry(owner.id, trip.id(), new SaveEntry(EntryType.ACTIVITY, "Example activity", "", "", List.of(point), 0L, "Booking.com"));
         assertNull(travel.getEntry(owner.id, trip.id(), entry.id()).points().getFirst().time());
+        assertEquals("Booking.com", travel.getEntry(owner.id, trip.id(), entry.id()).bookingSource());
         assertEquals(point.mapEmbedUrl(), travel.getEntry(owner.id, trip.id(), entry.id()).points().getFirst().mapEmbedUrl());
         byte[] bytes = "%PDF-1.7 synthetic fixture".getBytes(StandardCharsets.UTF_8);
         var attachment = attachments.upload(owner.id, trip.id(), entry.id(), PointRole.START, "example.pdf", "application/pdf", bytes);
@@ -74,7 +75,7 @@ class TravelPostgresTests {
         assertEquals(0, jdbc.queryForObject("select count(*) from travel_points where entry_id = ?", Integer.class, entry.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from platform_resources where id = ?", Integer.class, trip.id()));
         var secondTrip = travel.create(owner.id, new SaveTrip("Account deletion fixture", "", LocalDate.of(2030, 12, 1), LocalDate.of(2030, 12, 10), 0L));
-        var secondEntry = travel.createEntry(owner.id, secondTrip.id(), new SaveEntry(EntryType.ACTIVITY, "Example activity", "", "", List.of(point), 0L));
+        var secondEntry = travel.createEntry(owner.id, secondTrip.id(), new SaveEntry(EntryType.ACTIVITY, "Example activity", "", "", List.of(point), 0L, "Booking.com"));
         var secondAttachment = attachments.upload(owner.id, secondTrip.id(), secondEntry.id(), null, "example.pdf", "application/pdf", bytes);
         assertEquals("traveltime", jdbc.queryForObject("select storage_project from travel_attachments where id = ?", String.class, secondAttachment.id()));
         UUID cloudId = jdbc.queryForObject("select orbit_file_id from travel_attachments where id = ?", UUID.class, secondAttachment.id());

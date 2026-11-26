@@ -245,6 +245,28 @@ class TravelApiTests {
         assertEquals(204, call("DELETE", entry + "/attachments/" + id, null, owner).statusCode());
         assertEquals(0, json.readTree(call("GET", entry + "/attachments", null, owner).body()).size());
     }
+    @Test void storesPrivateBookingSourcesAndPreservesThemForOlderClients() throws Exception {
+        String trip = createTrip();
+        ObjectNode input = entryInput("HOTEL");
+        input.put("bookingSource", " Booking.com ");
+        var created = call("POST", trip + "/entries", input.toString(), owner);
+        assertEquals(201, created.statusCode());
+        var body = json.readTree(created.body());
+        String entry = trip + "/entries/" + body.get("id").asText();
+        assertEquals("Booking.com", body.get("bookingSource").asText());
+        assertEquals(404, call("GET", entry, null, account(false).id).statusCode());
+        input.remove("bookingSource");
+        input.put("version", body.get("version").asLong());
+        var updated = call("PUT", entry, input.toString(), owner);
+        assertEquals(200, updated.statusCode());
+        assertEquals("Booking.com", json.readTree(updated.body()).get("bookingSource").asText());
+        input.put("version", json.readTree(updated.body()).get("version").asLong());
+        input.put("bookingSource", "");
+        assertEquals("", json.readTree(call("PUT", entry, input.toString(), owner).body()).get("bookingSource").asText());
+        input.put("bookingSource", "x".repeat(161));
+        assertEquals(400, call("POST", trip + "/entries", input.toString(), owner).statusCode());
+    }
+
     @Test void storesStationEmbedLinksAndRejectsUnsafeSources() throws Exception {
         String trip = createTrip();
         ObjectNode input = entryInput("ACTIVITY");
