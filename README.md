@@ -80,3 +80,22 @@ Keep response nullability, required fields and enums accurate when changing DTOs
 The dynamic auth action map remains runtime-validated by AccountService; its
 OpenAPI action parameter is an enum and its JSON map intentionally allows unknown
 values. Contract generation itself does not alter authentication or credential storage.
+
+
+## Travel packing lists
+
+`GET/PUT /internal/travel/trips/{tripId}/packing` reads or atomically replaces an ordered
+packing tree with a last-read aggregate `version`. Existing travel bridge authentication and
+trip ownership apply: verified viewers can read, only the owner can edit or check items.
+V15 adds normalized trip list, person, group and item tables. Person names are display labels,
+not account identities or new sharing grants. Stable UUIDs and positions preserve order and
+checks; aggregate optimistic locking rejects concurrent edits with 409. Cascading foreign keys
+remove packing data with the trip or account. Counts are derived, never stored separately.
+Limits: 12 people, 40 groups/person, 100 groups total, 100 items/group, 500 items total;
+names are bounded to 80/100/200 characters. Duplicate IDs and cross-trip row reuse are rejected.
+
+Private names, group labels, item text and checks are stored solely to provide the checklist in
+the existing backend database and its backups. Existing hosting/authentication logs and authorized
+trip viewers remain recipients; no new third party, analytics, geolocation or browser storage is
+introduced. They remain until removed by the owner or trip/account deletion. Backup deletion
+schedules remain subject to the existing operator review; no new retention promise is made.

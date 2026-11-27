@@ -37,6 +37,7 @@ class TravelPostgresTests {
     }
 
     @Autowired TravelService travel;
+    @Autowired PackingService packing;
     @Autowired TravelAttachmentService attachments;
     @Autowired ResourceAccessService access;
     @MockitoBean OrbitStorageClient orbit;
@@ -70,7 +71,15 @@ class TravelPostgresTests {
         access.invite(owner.id, TravelService.RESOURCE_TYPE, trip.id(), "viewer@example.invalid");
         var unrelated = access.create(owner.id, "example.document");
         assertEquals(404, assertThrows(AuthFailure.class, () -> travel.get(owner.id, unrelated.id)).status);
+        var packingItem = new PackingDtos.PackingItem(UUID.randomUUID(), "Synthetic item", true);
+        var packingGroup = new PackingDtos.PackingGroup(UUID.randomUUID(), "Synthetic group", List.of(packingItem));
+        var packingPerson = new PackingDtos.PackingPerson(UUID.randomUUID(), "Synthetic traveler", List.of(packingGroup));
+        var savedPacking = packing.save(owner.id, trip.id(), new PackingDtos.PackingList(0, List.of(packingPerson)));
+        assertEquals(1, savedPacking.version());
+        assertTrue(packing.get(owner.id, trip.id()).people().getFirst().groups().getFirst().items().getFirst().checked());
         travel.delete(owner.id, trip.id(), trip.version());
+        assertEquals(0, jdbc.queryForObject("select count(*) from travel_packing_items where id = ?", Integer.class, packingItem.id()));
+        assertEquals(0, jdbc.queryForObject("select count(*) from travel_packing_people where id = ?", Integer.class, packingPerson.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from travel_attachment_contents where id = ?", Integer.class, attachment.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from platform_resource_viewers where resource_id = ?", Integer.class, trip.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from travel_points where entry_id = ?", Integer.class, entry.id()));
@@ -80,7 +89,11 @@ class TravelPostgresTests {
         var secondAttachment = attachments.upload(owner.id, secondTrip.id(), secondEntry.id(), null, "example.pdf", "application/pdf", bytes);
         assertEquals("traveltime", jdbc.queryForObject("select storage_project from travel_attachments where id = ?", String.class, secondAttachment.id()));
         UUID cloudId = jdbc.queryForObject("select orbit_file_id from travel_attachments where id = ?", UUID.class, secondAttachment.id());
+        var accountPackingItem = new PackingDtos.PackingItem(UUID.randomUUID(), "Account deletion packing fixture", false);
+        packing.save(owner.id, secondTrip.id(), new PackingDtos.PackingList(0, List.of(new PackingDtos.PackingPerson(
+            UUID.randomUUID(), "Example", List.of(new PackingDtos.PackingGroup(UUID.randomUUID(), "Example", List.of(accountPackingItem)))))));
         accounts.deleteById(owner.id);
+        assertEquals(0, jdbc.queryForObject("select count(*) from travel_packing_items where id = ?", Integer.class, accountPackingItem.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from platform_resources where id = ?", Integer.class, unrelated.id));
         assertEquals(1, jdbc.queryForObject("select count(*) from platform_file_deletions where orbit_file_id = ? and project = 'traveltime'", Integer.class, cloudId));
     }

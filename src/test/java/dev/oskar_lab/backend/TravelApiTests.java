@@ -286,4 +286,81 @@ class TravelApiTests {
         ((ObjectNode) input.withArray("points").get(0)).put("mapEmbedUrl", "https://evil.invalid/maps/embed?pb=x");
         assertEquals(400, call("POST", trip + "/entries", input.toString(), owner).statusCode());
     }
+
+    private ObjectNode packingInput() {
+        var input = json.createObjectNode(); input.put("version", 0);
+        var person = input.putArray("people").addObject(); person.put("id", UUID.randomUUID().toString()); person.put("name", "Example traveler");
+        var group = person.putArray("groups").addObject(); group.put("id", UUID.randomUUID().toString()); group.put("name", "Hygiene");
+        var item = group.putArray("items").addObject(); item.put("id", UUID.randomUUID().toString()); item.put("name", "Toothbrush"); item.put("checked", false);
+        return input;
+    }
+
+    @Test void persistsPackingChecksAndRejectsStaleEdits() throws Exception {
+        String path = createTrip() + "/packing";
+        assertEquals(0, json.readTree(call("GET", path, null, owner).body()).path("people").size());
+        var input = packingInput();
+        var response = call("PUT", path, input.toString(), owner);
+        assertEquals(200, response.statusCode(), response.body());
+        var saved = (ObjectNode) json.readTree(response.body());
+        assertEquals(1, saved.path("version").asLong());
+        assertEquals(409, call("PUT", path, input.toString(), owner).statusCode());
+        ((ObjectNode) saved.path("people").get(0).path("groups").get(0).path("items").get(0)).put("checked", true);
+        assertEquals(200, call("PUT", path, saved.toString(), owner).statusCode());
+        var reloaded = (ObjectNode) json.readTree(call("GET", path, null, owner).body());
+        assertTrue(reloaded.path("people").get(0).path("groups").get(0).path("items").get(0).path("checked").asBoolean());
+        ((ObjectNode) reloaded.path("people").get(0)).put("name", "Renamed traveler");
+        ((ObjectNode) reloaded.path("people").get(0)).putArray("groups");
+        assertEquals(200, call("PUT", path, reloaded.toString(), owner).statusCode());
+        var latest = json.readTree(call("GET", path, null, owner).body());
+        assertEquals("Renamed traveler", latest.path("people").get(0).path("name").asText());
+        assertEquals(0, latest.path("people").get(0).path("groups").size());
+    }
+
+    @Test void enforcesPackingTripPermissionsAndPrivateCaching() throws Exception {
+        String trip = createTrip(), path = trip + "/packing";
+        var input = packingInput();
+        assertEquals(403, call("GET", path, null, owner, false).statusCode());
+        assertEquals(404, call("GET", path, null, account(false).id).statusCode());
+        assertEquals(404, call("PUT", path, input.toString(), account(false).id).statusCode());
+        var viewer = account(true);
+        assertEquals(201, call("POST", trip + "/viewers", "{\"email\":\"" + viewer.email + "\"}", owner).statusCode());
+        var read = call("GET", path, null, viewer.id);
+        assertEquals(200, read.statusCode()); assertEquals("private, no-store", read.headers().firstValue("Cache-Control").orElse(""));
+        assertEquals(403, call("PUT", path, input.toString(), viewer.id).statusCode());
+    }
+
+    @Test void rejectsInvalidPackingNamesIdsAndCrossTripRowReuse() throws Exception {
+        String path = createTrip() + "/packing";
+        var input = packingInput();
+        ((ObjectNode) input.path("people").get(0)).put("name", " ");
+        assertEquals(400, call("PUT", path, input.toString(), owner).statusCode());
+        input = packingInput();
+        ((ObjectNode) input.path("people").get(0).path("groups").get(0)).put("id", input.path("people").get(0).path("id").asText());
+        assertEquals(400, call("PUT", path, input.toString(), owner).statusCode());
+        input = packingInput();
+        assertEquals(200, call("PUT", path, input.toString(), owner).statusCode());
+        String other = createTrip() + "/packing";
+        assertEquals(409, call("PUT", other, input.toString(), owner).statusCode());
+        assertEquals(0, json.readTree(call("GET", other, null, owner).body()).path("people").size());
+    }
+
+    @Test void rejectsConcurrentPackingWritesAndExcessiveLists() throws Exception {
+        String path = createTrip() + "/packing";
+        var input = packingInput();
+        var first = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try { return call("PUT", path, input.toString(), owner).statusCode(); }
+            catch (Exception e) { throw new RuntimeException(e); }
+        });
+        var second = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try { return call("PUT", path, input.toString(), owner).statusCode(); }
+            catch (Exception e) { throw new RuntimeException(e); }
+        });
+        assertEquals(List.of(200, 409), java.util.stream.Stream.of(first.join(), second.join()).sorted().toList());
+        var excessive = json.createObjectNode(); excessive.put("version", 1);
+        var people = excessive.putArray("people");
+        for (int n = 0; n < 13; n++) {
+            var person = people.addObject(); person.put("id", UUID.randomUUID().toString()); person.put("name", "Example"); person.putArray("groups");
+        }
+        assertEquals(400, call("PUT", path, excessive.toString(), owner).statusCode());
+    }
 }

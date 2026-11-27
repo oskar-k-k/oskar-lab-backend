@@ -25,10 +25,12 @@ public class TravelController {
     private final TravelAttachmentService attachments;
     private final ResourceAccessService access;
     private final String secret;
+    private final PackingService packing;
 
     public TravelController(TravelService travel, TravelAttachmentService attachments, ResourceAccessService access,
-                            @Value("${auth.bridge-secret:}") String secret) {
+                            @Value("${auth.bridge-secret:}") String secret, PackingService packing) {
         this.travel = travel; this.attachments = attachments; this.access = access; this.secret = secret;
+        this.packing = packing;
     }
 
     @ModelAttribute
@@ -53,6 +55,19 @@ public class TravelController {
     /** Reads a trip only for its owner or a verified email grantee. */
     @GetMapping("/{tripId}")
     public Trip get(@RequestHeader("X-User-Id") UUID user, @PathVariable UUID tripId) { return travel.get(user, tripId); }
+
+    /** Reads a trip's ordered person tabs, groups and persisted checks under existing trip permissions. */
+    @GetMapping("/{tripId}/packing")
+    public PackingDtos.PackingList packing(@RequestHeader("X-User-Id") UUID user, @PathVariable UUID tripId) {
+        return packing.get(user, tripId);
+    }
+
+    /** Atomically saves the owner's packing list using its last-read aggregate version. */
+    @PutMapping("/{tripId}/packing")
+    public PackingDtos.PackingList savePacking(@RequestHeader("X-User-Id") UUID user, @PathVariable UUID tripId,
+                                              @Valid @RequestBody PackingDtos.PackingList input) {
+        return packing.save(user, tripId, input);
+    }
 
     /** Updates trip metadata using the last-read version. */
     @PutMapping("/{tripId}")

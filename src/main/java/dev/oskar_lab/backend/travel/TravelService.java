@@ -21,15 +21,17 @@ public class TravelService {
     private final TravelAttachmentRepository attachments;
     private final TravelAttachmentContentRepository contents;
     private final FileStorageService storage;
+    private final TravelPackingRepository packing;
 
     public TravelService(ResourceAccessService access, TravelTripRepository trips, TravelEntryRepository entries,
-                         TravelAttachmentRepository attachments, TravelAttachmentContentRepository contents, FileStorageService storage) {
+                         TravelAttachmentRepository attachments, TravelAttachmentContentRepository contents, FileStorageService storage, TravelPackingRepository packing) {
         this.access = access;
         this.trips = trips;
         this.entries = entries;
         this.attachments = attachments;
         this.contents = contents;
         this.storage = storage;
+        this.packing = packing;
     }
 
     /** Lists only visible trips, twenty at a time; unverified email addresses cannot claim shares. */
@@ -47,7 +49,10 @@ public class TravelService {
         TravelTrip trip = new TravelTrip();
         trip.id = resource.id;
         applyTrip(trip, input);
-        return tripDto(trips.saveAndFlush(trip), resource, user);
+        trips.saveAndFlush(trip);
+        var list = new TravelPackingList(); list.tripId = trip.id;
+        packing.saveAndFlush(list);
+        return tripDto(trip, resource, user);
     }
 
     /** Reads a trip after checking its resource boundary. */
@@ -74,6 +79,8 @@ public class TravelService {
         checkVersion(trip.version, version);
         for (TravelEntry entry : entries.findByTripId(tripId)) deleteEntryRows(entry);
         entries.flush();
+        packing.deleteById(tripId);
+        packing.flush();
         trips.delete(trip);
         trips.flush();
         access.delete(user, RESOURCE_TYPE, tripId);
