@@ -249,11 +249,14 @@ class TravelApiTests {
         String trip = createTrip();
         ObjectNode input = entryInput("HOTEL");
         input.put("bookingSource", " Booking.com ");
+        ((ObjectNode) input.withArray("points").get(0)).put("timelineTime", "17:00:00");
         var created = call("POST", trip + "/entries", input.toString(), owner);
         assertEquals(201, created.statusCode());
         var body = json.readTree(created.body());
         String entry = trip + "/entries/" + body.get("id").asText();
         assertEquals("Booking.com", body.get("bookingSource").asText());
+        assertEquals("17:00:00", body.get("points").get(0).get("timelineTime").asText());
+        assertTrue(body.get("points").get(0).get("timelineUtcOffset").isTextual());
         assertEquals(404, call("GET", entry, null, account(false).id).statusCode());
         input.remove("bookingSource");
         input.put("version", body.get("version").asLong());

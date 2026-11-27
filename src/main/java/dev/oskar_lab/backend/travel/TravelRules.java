@@ -24,6 +24,9 @@ public final class TravelRules {
         if (normalized.size() == 2) {
             Point start = normalized.getFirst();
             Point end = normalized.getLast();
+            if (start.timelineTime() != null && end.timelineTime() != null &&
+                LocalDateTime.of(end.date(), end.timelineTime()).toInstant(ZoneOffset.of(end.timelineUtcOffset())).isBefore(
+                    LocalDateTime.of(start.date(), start.timelineTime()).toInstant(ZoneOffset.of(start.timelineUtcOffset())))) throw new IllegalArgumentException();
             if (start.time() != null && end.time() != null) {
                 if (instant(end).isBefore(instant(start))) throw new IllegalArgumentException();
             } else if (!isTransport(type) && end.date().isBefore(start.date())) {
@@ -54,13 +57,22 @@ public final class TravelRules {
             if (point.timeMeaning() == TimeMeaning.UNSPECIFIED) throw new IllegalArgumentException();
             if (point.timeMeaning() == TimeMeaning.NOT_BEFORE && point.role() != PointRole.CHECK_IN) throw new IllegalArgumentException();
             if (point.timeMeaning() == TimeMeaning.NOT_AFTER && point.role() != PointRole.CHECK_OUT) throw new IllegalArgumentException();
-            List<ZoneOffset> offsets = zone.getRules().getValidOffsets(LocalDateTime.of(point.date(), point.time()));
-            ZoneOffset selected = point.utcOffset() == null ? (offsets.size() == 1 ? offsets.getFirst() : null) : ZoneOffset.of(point.utcOffset());
-            if (selected == null || !offsets.contains(selected)) throw new IllegalArgumentException();
-            offset = selected.toString();
+            offset = resolveOffset(point.date(), point.time(), zone, point.utcOffset());
         }
+        String timelineOffset = null;
+        if (point.timelineTime() != null) {
+            if (point.role() != PointRole.CHECK_IN && point.role() != PointRole.CHECK_OUT) throw new IllegalArgumentException();
+            timelineOffset = resolveOffset(point.date(), point.timelineTime(), zone, point.timelineUtcOffset());
+        } else if (point.timelineUtcOffset() != null) throw new IllegalArgumentException();
         return new Point(point.role(), point.date(), point.time(), zone.getId(), offset,
-            point.timeMeaning(), point.placeName().strip(), point.address() == null ? "" : point.address().strip(), normalizeMapEmbedUrl(point.mapEmbedUrl()));
+            point.timeMeaning(), point.placeName().strip(), point.address() == null ? "" : point.address().strip(), normalizeMapEmbedUrl(point.mapEmbedUrl()), point.timelineTime(), timelineOffset);
+    }
+
+    private static String resolveOffset(LocalDate date, LocalTime time, ZoneId zone, String supplied) {
+        List<ZoneOffset> offsets = zone.getRules().getValidOffsets(LocalDateTime.of(date, time));
+        ZoneOffset selected = supplied == null ? (offsets.size() == 1 ? offsets.getFirst() : null) : ZoneOffset.of(supplied);
+        if (selected == null || !offsets.contains(selected)) throw new IllegalArgumentException();
+        return selected.toString();
     }
 
     /** Allows only key-free Google Maps share embeds, never arbitrary frames or API-key URLs. */

@@ -21,4 +21,6 @@ public class TravelPoint {
     @Column(nullable = false, length = 200) public String placeName;
     @Column(nullable = false, length = 1000) public String address = "";
     @Column(length = 16000) public String mapEmbedUrl;
+    public LocalTime timelineTime;
+    @Column(length = 9) public String timelineUtcOffset;
 }

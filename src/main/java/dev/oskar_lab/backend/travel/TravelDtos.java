@@ -26,7 +26,15 @@ public final class TravelDtos {
     public record Point(@NotNull PointRole role, @NotNull LocalDate date, @Schema(nullable = true) LocalTime time,
         @NotBlank @Size(max = 64) String timeZone, @Schema(nullable = true) @Size(max = 9) String utcOffset,
         @NotNull TimeMeaning timeMeaning, @NotBlank @Size(max = 200) String placeName, @Size(max = 1000) String address,
-        @Schema(nullable = true) @Size(max = 16000) String mapEmbedUrl) {}
+        @Schema(nullable = true) @Size(max = 16000) String mapEmbedUrl,
+        @Schema(nullable = true) LocalTime timelineTime,
+        @Schema(nullable = true) @Size(max = 9) String timelineUtcOffset) {
+        /** Creates a point without an independently planned stay time. */
+        public Point(PointRole role, LocalDate date, LocalTime time, String timeZone, String utcOffset,
+                     TimeMeaning timeMeaning, String placeName, String address, String mapEmbedUrl) {
+            this(role, date, time, timeZone, utcOffset, timeMeaning, placeName, address, mapEmbedUrl, null, null);
+        }
+    }
 
     @Schema(name = "TravelSaveEntry")
     public record SaveEntry(@NotNull EntryType type, @NotBlank @Size(max = 200) String title,

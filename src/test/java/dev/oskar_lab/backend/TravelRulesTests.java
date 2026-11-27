@@ -9,6 +9,22 @@ import static dev.oskar_lab.backend.travel.TravelDtos.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TravelRulesTests {
+    @Test void keepsPlannedStayTimesIndependentAndValidatesTheirZones() {
+        var start = new Point(PointRole.CHECK_IN, LocalDate.of(2030,12,1), LocalTime.of(14,0), "Asia/Bangkok", null,
+            TimeMeaning.NOT_BEFORE, "Example stay", "", null, LocalTime.of(17,0), null);
+        var end = point(PointRole.CHECK_OUT, "2030-12-03", "11:00", "Asia/Bangkok", null, TimeMeaning.NOT_AFTER);
+        var normalized = TravelRules.normalize(EntryType.HOTEL, List.of(start,end));
+        assertEquals(LocalTime.of(14,0), normalized.getFirst().time());
+        assertEquals(LocalTime.of(17,0), normalized.getFirst().timelineTime());
+        assertEquals("+07:00", normalized.getFirst().timelineUtcOffset());
+        assertNull(TravelRules.durationMinutes(normalized));
+        var gap = new Point(PointRole.CHECK_IN, LocalDate.of(2026,3,29), null, "Europe/Berlin", null,
+            TimeMeaning.UNSPECIFIED, "Example stay", "", null, LocalTime.of(2,30), null);
+        assertThrows(IllegalArgumentException.class, () -> TravelRules.normalize(EntryType.HOTEL, List.of(gap,end)));
+        var activity = new Point(PointRole.START, start.date(), null, "Asia/Bangkok", null,
+            TimeMeaning.UNSPECIFIED, "Example", "", null, LocalTime.NOON, null);
+        assertThrows(IllegalArgumentException.class, () -> TravelRules.normalize(EntryType.ACTIVITY, List.of(activity)));
+    }
     private Point point(PointRole role, String date, String time, String zone, String offset, TimeMeaning meaning) {
         return new Point(role, LocalDate.parse(date), time == null ? null : LocalTime.parse(time), zone, offset, meaning, "Example place", "Example address", null);
     }

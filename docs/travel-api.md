@@ -194,3 +194,5 @@ Cloud credentials or billing account is needed for these saved share embeds. Acc
 on selecting the correct place in Google Maps before copying its embed link.
 
 Bookings accept optional `bookingSource` (plain text, max 160 characters), e.g. `Booking.com`. Returned entries include an empty string when no source is known. Omission on update preserves the current value for older clients; an empty string clears it. It is private booking metadata governed by the existing trip authorization and deletion rules. No link or third-party request is created from this field.
+
+Stay points optionally accept `timelineTime` plus `timelineUtcOffset` for a separate planned time on the point date. These fields are allowed only on CHECK_IN/CHECK_OUT points, validated against the saved IANA zone, and persisted independently of accommodation policy times. Gaps are rejected and ambiguous local times require an explicit offset. Unknown plans remain null. The fields share trip authorization, retention and deletion rules.
