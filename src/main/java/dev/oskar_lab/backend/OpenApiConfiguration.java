@@ -46,7 +46,7 @@ public class OpenApiConfiguration {
           // These DTOs always serialize every field; validation annotations alone omit response requirements.
           var schemas = api.getComponents().getSchemas();
           for (var name : List.of("ExerciseDto", "Entry", "Plan", "PlanPage", "SavePlan", "SetResult", "SaveLog", "Log", "History", "AppEntity", "PageAppEntity",
-                  "TravelTrip", "TravelTripPage", "TravelEntry", "TravelEntryPage", "TravelPoint", "TravelViewer", "TravelAttachment", "PackingList", "PackingPerson", "PackingGroup", "PackingItem")) {
+                  "TravelTrip", "TravelTripPage", "TravelEntry", "TravelEntryPage", "TravelPoint", "TravelViewer", "TravelAttachment", "PackingList", "PackingPerson", "PackingGroup", "PackingItem", "TravelSavedPlace", "TravelSavedPlacePage")) {
               var schema = schemas.get(name);
               if (schema == null || schema.getProperties() == null) continue;
               var required = new ArrayList<String>(schema.getProperties().keySet());

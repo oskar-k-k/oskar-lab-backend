@@ -26,11 +26,13 @@ public class TravelController {
     private final ResourceAccessService access;
     private final String secret;
     private final PackingService packing;
+    private final SavedPlaceService savedPlaces;
 
     public TravelController(TravelService travel, TravelAttachmentService attachments, ResourceAccessService access,
-                            @Value("${auth.bridge-secret:}") String secret, PackingService packing) {
+                            @Value("${auth.bridge-secret:}") String secret, PackingService packing, SavedPlaceService savedPlaces) {
         this.travel = travel; this.attachments = attachments; this.access = access; this.secret = secret;
         this.packing = packing;
+        this.savedPlaces = savedPlaces;
     }
 
     @ModelAttribute
@@ -67,6 +69,34 @@ public class TravelController {
     public PackingDtos.PackingList savePacking(@RequestHeader("X-User-Id") UUID user, @PathVariable UUID tripId,
                                               @Valid @RequestBody PackingDtos.PackingList input) {
         return packing.save(user, tripId, input);
+    }
+
+    /** Lists private inspiration links separately from confirmed bookings. */
+    @GetMapping("/{tripId}/saved")
+    public SavedPlaceDtos.SavedPlacePage savedPlaces(@RequestHeader("X-User-Id") UUID user, @PathVariable UUID tripId,
+                                                   @RequestParam(defaultValue = "0") int page) {
+        return savedPlaces.list(user, tripId, page);
+    }
+
+    /** Saves a title, optional HTTP(S) link and note without fetching external content. */
+    @PostMapping("/{tripId}/saved") @ResponseStatus(HttpStatus.CREATED)
+    public SavedPlaceDtos.SavedPlace createSavedPlace(@RequestHeader("X-User-Id") UUID user, @PathVariable UUID tripId,
+                                                     @Valid @RequestBody SavedPlaceDtos.SavePlace input) {
+        return savedPlaces.create(user, tripId, input);
+    }
+
+    /** Updates an owner's saved place at its last-read version. */
+    @PutMapping("/{tripId}/saved/{placeId}")
+    public SavedPlaceDtos.SavedPlace updateSavedPlace(@RequestHeader("X-User-Id") UUID user, @PathVariable UUID tripId,
+                                                     @PathVariable UUID placeId, @Valid @RequestBody SavedPlaceDtos.SavePlace input) {
+        return savedPlaces.update(user, tripId, placeId, input);
+    }
+
+    /** Deletes one authorized saved place without affecting the timeline. */
+    @DeleteMapping("/{tripId}/saved/{placeId}") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteSavedPlace(@RequestHeader("X-User-Id") UUID user, @PathVariable UUID tripId,
+                                 @PathVariable UUID placeId, @RequestParam long version) {
+        savedPlaces.delete(user, tripId, placeId, version);
     }
 
     /** Updates trip metadata using the last-read version. */

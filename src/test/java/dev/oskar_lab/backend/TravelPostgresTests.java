@@ -38,6 +38,7 @@ class TravelPostgresTests {
 
     @Autowired TravelService travel;
     @Autowired PackingService packing;
+    @Autowired SavedPlaceService savedPlaces;
     @Autowired TravelAttachmentService attachments;
     @Autowired ResourceAccessService access;
     @MockitoBean OrbitStorageClient orbit;
@@ -77,7 +78,10 @@ class TravelPostgresTests {
         var savedPacking = packing.save(owner.id, trip.id(), new PackingDtos.PackingList(0, List.of(packingPerson)));
         assertEquals(1, savedPacking.version());
         assertTrue(packing.get(owner.id, trip.id()).people().getFirst().groups().getFirst().items().getFirst().checked());
+        var savedPlace = savedPlaces.create(owner.id, trip.id(), new SavedPlaceDtos.SavePlace("Example saved place", "https://example.invalid/place", "Example note", 0L));
+        assertEquals(1, savedPlaces.list(owner.id, trip.id(), 0).places().size());
         travel.delete(owner.id, trip.id(), trip.version());
+        assertEquals(0, jdbc.queryForObject("select count(*) from travel_saved_places where id = ?", Integer.class, savedPlace.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from travel_packing_items where id = ?", Integer.class, packingItem.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from travel_packing_people where id = ?", Integer.class, packingPerson.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from travel_attachment_contents where id = ?", Integer.class, attachment.id()));
@@ -92,7 +96,9 @@ class TravelPostgresTests {
         var accountPackingItem = new PackingDtos.PackingItem(UUID.randomUUID(), "Account deletion packing fixture", false);
         packing.save(owner.id, secondTrip.id(), new PackingDtos.PackingList(0, List.of(new PackingDtos.PackingPerson(
             UUID.randomUUID(), "Example", List.of(new PackingDtos.PackingGroup(UUID.randomUUID(), "Example", List.of(accountPackingItem)))))));
+        var accountSavedPlace = savedPlaces.create(owner.id, secondTrip.id(), new SavedPlaceDtos.SavePlace("Deletion fixture", "", "", 0L));
         accounts.deleteById(owner.id);
+        assertEquals(0, jdbc.queryForObject("select count(*) from travel_saved_places where id = ?", Integer.class, accountSavedPlace.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from travel_packing_items where id = ?", Integer.class, accountPackingItem.id()));
         assertEquals(0, jdbc.queryForObject("select count(*) from platform_resources where id = ?", Integer.class, unrelated.id));
         assertEquals(1, jdbc.queryForObject("select count(*) from platform_file_deletions where orbit_file_id = ? and project = 'traveltime'", Integer.class, cloudId));

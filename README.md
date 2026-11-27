@@ -99,3 +99,16 @@ the existing backend database and its backups. Existing hosting/authentication l
 trip viewers remain recipients; no new third party, analytics, geolocation or browser storage is
 introduced. They remain until removed by the owner or trip/account deletion. Backup deletion
 schedules remain subject to the existing operator review; no new retention promise is made.
+
+
+## Saved travel inspiration
+
+V16 adds trip-scoped saved places: manual title (160), optional HTTP(S) URL (2048), notes
+(1000), created timestamp and optimistic version. GET /internal/travel/trips/{tripId}/saved
+returns twenty per page; POST creates, PUT /saved/{placeId} updates and DELETE with version
+removes. Owners alone can write; verified trip viewers can read. IDs are scoped to their trip,
+unsafe schemes and URL credentials are rejected, and lists are bounded to 500 items/trip.
+External URLs are never fetched by the backend. Trip/account deletion removes active rows.
+Purpose, recipients and retention follow the existing private trip/database/backups; existing
+backup deletion schedules remain an operator review item. No remote preview service, analytics
+or additional recipient is introduced. Clients open external links only on explicit activation.

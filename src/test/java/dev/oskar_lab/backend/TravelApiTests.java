@@ -363,4 +363,34 @@ class TravelApiTests {
         }
         assertEquals(400, call("PUT", path, excessive.toString(), owner).statusCode());
     }
+
+    @Test void storesPrivateSavedLinksAndEnforcesVersionsAndTripBoundaries() throws Exception {
+        String trip = createTrip(), path = trip + "/saved";
+        String input = "{\"title\":\"Example place\",\"url\":\"https://www.instagram.com/reel/example/\",\"notes\":\"Example note\",\"version\":0}";
+        var response = call("POST", path, input, owner);
+        assertEquals(201, response.statusCode(), response.body());
+        var saved = (ObjectNode) json.readTree(response.body()); String itemPath = path + "/" + saved.path("id").asText();
+        assertEquals(1, json.readTree(call("GET", path, null, owner).body()).path("places").size());
+        assertEquals(404, call("GET", path, null, account(false).id).statusCode());
+        assertEquals(404, call("PUT", createTrip() + "/saved/" + saved.path("id").asText(), input, owner).statusCode());
+        var viewer = account(true);
+        call("POST", trip + "/viewers", "{\"email\":\"" + viewer.email + "\"}", owner);
+        assertEquals(200, call("GET", path, null, viewer.id).statusCode());
+        assertEquals(403, call("POST", path, input, viewer.id).statusCode());
+        saved.put("title", "Updated place");
+        assertEquals(200, call("PUT", itemPath, saved.toString(), owner).statusCode());
+        assertEquals(409, call("PUT", itemPath, saved.toString(), owner).statusCode());
+        assertEquals(409, call("DELETE", itemPath + "?version=0", null, owner).statusCode());
+        assertEquals(204, call("DELETE", itemPath + "?version=1", null, owner).statusCode());
+    }
+
+    @Test void rejectsActiveAndCredentialBearingSavedUrlsAndInvalidPages() throws Exception {
+        String path = createTrip() + "/saved";
+        for (String url : List.of("javascript:alert(1)", "data:text/html,x", "https://user:password@example.invalid/", "file:///tmp/private")) {
+            var input = json.createObjectNode(); input.put("title", "Example"); input.put("url", url); input.put("version", 0);
+            assertEquals(400, call("POST", path, input.toString(), owner).statusCode());
+        }
+        assertEquals(400, call("GET", path + "?page=-1", null, owner).statusCode());
+        assertEquals(403, call("GET", path, null, owner, false).statusCode());
+    }
 }
