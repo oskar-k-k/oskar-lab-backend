@@ -24,9 +24,9 @@ public final class TravelRules {
         if (normalized.size() == 2) {
             Point start = normalized.getFirst();
             Point end = normalized.getLast();
-            if (start.timelineTime() != null && end.timelineTime() != null &&
-                LocalDateTime.of(end.date(), end.timelineTime()).toInstant(ZoneOffset.of(end.timelineUtcOffset())).isBefore(
-                    LocalDateTime.of(start.date(), start.timelineTime()).toInstant(ZoneOffset.of(start.timelineUtcOffset())))) throw new IllegalArgumentException();
+            Instant plannedStart = timelineInstant(start);
+            Instant plannedEnd = timelineInstant(end);
+            if (plannedStart != null && plannedEnd != null && plannedEnd.isBefore(plannedStart)) throw new IllegalArgumentException();
             if (start.time() != null && end.time() != null) {
                 if (instant(end).isBefore(instant(start))) throw new IllegalArgumentException();
             } else if (!isTransport(type) && end.date().isBefore(start.date())) {
@@ -60,12 +60,19 @@ public final class TravelRules {
             offset = resolveOffset(point.date(), point.time(), zone, point.utcOffset());
         }
         String timelineOffset = null;
+        LocalDate timelineDate = null;
         if (point.timelineTime() != null) {
-            if (point.role() != PointRole.CHECK_IN && point.role() != PointRole.CHECK_OUT) throw new IllegalArgumentException();
-            timelineOffset = resolveOffset(point.date(), point.timelineTime(), zone, point.timelineUtcOffset());
-        } else if (point.timelineUtcOffset() != null) throw new IllegalArgumentException();
+            timelineDate = point.timelineDate() == null ? point.date() : point.timelineDate();
+            validateDate(timelineDate);
+            timelineOffset = resolveOffset(timelineDate, point.timelineTime(), zone, point.timelineUtcOffset());
+        } else if (point.timelineUtcOffset() != null || point.timelineDate() != null) throw new IllegalArgumentException();
+        TimeMeaning meaning = point.time() == null ? TimeMeaning.UNSPECIFIED : switch (point.role()) {
+            case CHECK_IN -> TimeMeaning.NOT_BEFORE;
+            case CHECK_OUT -> TimeMeaning.NOT_AFTER;
+            default -> TimeMeaning.EXACT;
+        };
         return new Point(point.role(), point.date(), point.time(), zone.getId(), offset,
-            point.timeMeaning(), point.placeName().strip(), point.address() == null ? "" : point.address().strip(), normalizeMapEmbedUrl(point.mapEmbedUrl()), point.timelineTime(), timelineOffset);
+            meaning, point.placeName().strip(), point.address() == null ? "" : point.address().strip(), normalizeMapEmbedUrl(point.mapEmbedUrl()), point.timelineTime(), timelineOffset, timelineDate);
     }
 
     private static String resolveOffset(LocalDate date, LocalTime time, ZoneId zone, String supplied) {
@@ -99,6 +106,11 @@ public final class TravelRules {
 
     private static Instant instant(Point point) {
         return LocalDateTime.of(point.date(), point.time()).toInstant(ZoneOffset.of(point.utcOffset()));
+    }
+
+    private static Instant timelineInstant(Point point) {
+        if (point.timelineTime() != null) return LocalDateTime.of(point.timelineDate(), point.timelineTime()).toInstant(ZoneOffset.of(point.timelineUtcOffset()));
+        return point.time() == null ? null : instant(point);
     }
 
     private static boolean isTransport(EntryType type) {

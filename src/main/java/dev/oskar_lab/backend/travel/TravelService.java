@@ -150,9 +150,9 @@ public class TravelService {
         entry.notes = text(input.notes());
         entry.reference = text(input.reference());
         if (input.bookingSource() != null) entry.bookingSource = text(input.bookingSource());
-        entry.sortDate = normalized.getFirst().date();
         Point first = normalized.getFirst();
-        LocalTime sortingTime = first.role() == TravelTypes.PointRole.CHECK_IN ? first.timelineTime() : first.time();
+        entry.sortDate = first.timelineDate() == null ? first.date() : first.timelineDate();
+        LocalTime sortingTime = first.timelineTime() == null ? first.time() : first.timelineTime();
         entry.sortTime = sortingTime == null ? LocalTime.of(23, 59, 59) : sortingTime;
         entry.updatedAt = Instant.now();
         var roles = normalized.stream().map(Point::role).toList();
@@ -165,12 +165,13 @@ public class TravelService {
             row.role = point.role(); row.date = point.date(); row.time = point.time(); row.timeZone = point.timeZone();
             row.utcOffset = point.utcOffset(); row.timeMeaning = point.timeMeaning(); row.placeName = point.placeName(); row.address = point.address(); row.mapEmbedUrl = point.mapEmbedUrl();
             row.timelineTime = point.timelineTime(); row.timelineUtcOffset = point.timelineUtcOffset();
+            row.timelineDate = point.timelineDate();
         }
     }
 
     private Entry entryDto(TravelEntry entry) {
         var points = entry.points.stream().sorted(Comparator.comparingInt(p -> p.position)).map(p -> new Point(p.role, p.date, p.time,
-            p.timeZone, p.utcOffset, p.timeMeaning, p.placeName, p.address, p.mapEmbedUrl, p.timelineTime, p.timelineUtcOffset)).toList();
+            p.timeZone, p.utcOffset, p.timeMeaning, p.placeName, p.address, p.mapEmbedUrl, p.timelineTime, p.timelineUtcOffset, p.timelineDate)).toList();
         return new Entry(entry.id, entry.tripId, entry.type, entry.title, entry.notes, entry.reference,
             points, TravelRules.durationMinutes(points), entry.version, entry.bookingSource);
     }

@@ -27,12 +27,19 @@ public final class TravelDtos {
         @NotBlank @Size(max = 64) String timeZone, @Schema(nullable = true) @Size(max = 9) String utcOffset,
         @NotNull TimeMeaning timeMeaning, @NotBlank @Size(max = 200) String placeName, @Size(max = 1000) String address,
         @Schema(nullable = true) @Size(max = 16000) String mapEmbedUrl,
-        @Schema(nullable = true) LocalTime timelineTime,
-        @Schema(nullable = true) @Size(max = 9) String timelineUtcOffset) {
-        /** Creates a point without an independently planned stay time. */
+        @Schema(nullable = true, description = "Optional personal planned time for any station; the timeline falls back to the booked time when absent") LocalTime timelineTime,
+        @Schema(nullable = true) @Size(max = 9) String timelineUtcOffset,
+        @Schema(nullable = true, description = "Optional planned local date; defaults to the booking date when a planned time is supplied") LocalDate timelineDate) {
+        /** Creates a point without an independently planned timeline instant. */
         public Point(PointRole role, LocalDate date, LocalTime time, String timeZone, String utcOffset,
                      TimeMeaning timeMeaning, String placeName, String address, String mapEmbedUrl) {
-            this(role, date, time, timeZone, utcOffset, timeMeaning, placeName, address, mapEmbedUrl, null, null);
+            this(role, date, time, timeZone, utcOffset, timeMeaning, placeName, address, mapEmbedUrl, null, null, null);
+        }
+        /** Accepts existing clients whose planned time uses the booking date. */
+        public Point(PointRole role, LocalDate date, LocalTime time, String timeZone, String utcOffset,
+                     TimeMeaning timeMeaning, String placeName, String address, String mapEmbedUrl,
+                     LocalTime timelineTime, String timelineUtcOffset) {
+            this(role, date, time, timeZone, utcOffset, timeMeaning, placeName, address, mapEmbedUrl, timelineTime, timelineUtcOffset, null);
         }
     }
 

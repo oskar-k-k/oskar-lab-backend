@@ -23,7 +23,7 @@ class TravelRulesTests {
         assertThrows(IllegalArgumentException.class, () -> TravelRules.normalize(EntryType.HOTEL, List.of(gap,end)));
         var activity = new Point(PointRole.START, start.date(), null, "Asia/Bangkok", null,
             TimeMeaning.UNSPECIFIED, "Example", "", null, LocalTime.NOON, null);
-        assertThrows(IllegalArgumentException.class, () -> TravelRules.normalize(EntryType.ACTIVITY, List.of(activity)));
+        assertEquals(LocalTime.NOON, TravelRules.normalize(EntryType.ACTIVITY, List.of(activity)).getFirst().timelineTime());
     }
     private Point point(PointRole role, String date, String time, String zone, String offset, TimeMeaning meaning) {
         return new Point(role, LocalDate.parse(date), time == null ? null : LocalTime.parse(time), zone, offset, meaning, "Example place", "Example address", null);
@@ -90,5 +90,30 @@ class TravelRulesTests {
             "https://www.google.com/maps/embed?pb=x&pb=y", "https://www.google.com/maps/embed?hl=de")) {
             assertThrows(IllegalArgumentException.class, () -> TravelRules.normalizeMapEmbedUrl(invalid));
         }
+    }
+
+    @Test void plansAirportPresenceOnThePreviousDayWithoutChangingTheFlight() {
+        var departure = new Point(PointRole.DEPARTURE, LocalDate.of(2030,12,2), LocalTime.of(1,0), "Europe/Berlin", null,
+            TimeMeaning.EXACT, "Example airport", "", null, LocalTime.of(22,0), null, LocalDate.of(2030,12,1));
+        var arrival = point(PointRole.ARRIVAL, "2030-12-02", "13:00", "Asia/Bangkok", null, TimeMeaning.EXACT);
+        var normalized = TravelRules.normalize(EntryType.FLIGHT, List.of(departure, arrival));
+        assertEquals(LocalDate.of(2030,12,1), normalized.getFirst().timelineDate());
+        assertEquals(LocalTime.of(1,0), normalized.getFirst().time());
+        assertEquals(360L, TravelRules.durationMinutes(normalized));
+        var reversed = new Point(PointRole.DEPARTURE, departure.date(), departure.time(), departure.timeZone(), null,
+            TimeMeaning.EXACT, "Example", "", null, LocalTime.of(15,0), null, departure.date());
+        assertThrows(IllegalArgumentException.class, () -> TravelRules.normalize(EntryType.FLIGHT, List.of(reversed, arrival)));
+    }
+
+    @Test void validatesThePlannedDateZoneAndCompletePlanForEveryRole() {
+        var gap = new Point(PointRole.START, LocalDate.of(2030,3,30), LocalTime.NOON, "Europe/Berlin", null,
+            TimeMeaning.EXACT, "Example", "", null, LocalTime.of(2,30), null, LocalDate.of(2030,3,31));
+        assertThrows(IllegalArgumentException.class, () -> TravelRules.normalize(EntryType.ACTIVITY, List.of(gap)));
+        var overlap = new Point(PointRole.START, LocalDate.of(2030,10,26), LocalTime.NOON, "Europe/Berlin", null,
+            TimeMeaning.EXACT, "Example", "", null, LocalTime.of(2,30), "+01:00", LocalDate.of(2030,10,27));
+        assertEquals("+01:00", TravelRules.normalize(EntryType.ACTIVITY, List.of(overlap)).getFirst().timelineUtcOffset());
+        var missingTime = new Point(PointRole.START, gap.date(), gap.time(), gap.timeZone(), null,
+            TimeMeaning.EXACT, "Example", "", null, null, null, gap.date());
+        assertThrows(IllegalArgumentException.class, () -> TravelRules.normalize(EntryType.ACTIVITY, List.of(missingTime)));
     }
 }

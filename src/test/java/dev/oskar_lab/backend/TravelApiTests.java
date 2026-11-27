@@ -393,4 +393,27 @@ class TravelApiTests {
         assertEquals(400, call("GET", path + "?page=-1", null, owner).statusCode());
         assertEquals(403, call("GET", path, null, owner, false).statusCode());
     }
+
+    @Test void storesPlansForEveryBookingTypeWithoutChangingBookedInstants() throws Exception {
+        String trip = createTrip();
+        for (String type : List.of("FLIGHT", "BOAT", "HOTEL", "ACTIVITY")) {
+            var input = entryInput(type);
+            var point = (ObjectNode) input.path("points").get(0);
+            point.put("timelineTime", "07:00:00"); point.put("timelineDate", "2030-12-01");
+            var response = call("POST", trip + "/entries", input.toString(), owner);
+            assertEquals(201, response.statusCode(), response.body());
+            var entry = (ObjectNode) json.readTree(response.body());
+            var saved = entry.path("points").get(0);
+            assertEquals("2030-12-02", saved.path("date").asText());
+            assertEquals("10:00:00", saved.path("time").asText());
+            assertEquals("2030-12-01", saved.path("timelineDate").asText());
+            assertEquals("07:00:00", saved.path("timelineTime").asText());
+            String path = trip + "/entries/" + entry.path("id").asText();
+            var cleared = (ObjectNode) entry.path("points").get(0);
+            cleared.putNull("timelineTime"); cleared.putNull("timelineDate"); cleared.putNull("timelineUtcOffset");
+            assertEquals(200, call("PUT", path, entry.toString(), owner).statusCode());
+            var reloaded = json.readTree(call("GET", path, null, owner).body()).path("points").get(0);
+            assertTrue(reloaded.path("timelineDate").isNull()); assertEquals("10:00:00", reloaded.path("time").asText());
+        }
+    }
 }

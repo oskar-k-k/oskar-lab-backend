@@ -112,3 +112,24 @@ External URLs are never fetched by the backend. Trip/account deletion removes ac
 Purpose, recipients and retention follow the existing private trip/database/backups; existing
 backup deletion schedules remain an operator review item. No remote preview service, analytics
 or additional recipient is introduced. Clients open external links only on explicit activation.
+
+
+## Booking times and personal timeline plans
+
+V17 generalizes existing planned stay fields to every station role and adds `timelineDate`.
+`date/time/utcOffset` remain the booked instant or accommodation policy. The optional
+`timelineDate/timelineTime/timelineUtcOffset` triple is a personal plan used only for timeline
+placement and routing suggestions. A supplied plan without a date defaults to the booked date,
+preserving existing clients; no plan falls back to booked date/time. A plan date or offset
+without a time is rejected. All timestamps use the station's IANA zone and independently
+validate DST gaps/overlaps. Pair order uses effective timeline instants as well as booked
+instants; elapsed travel duration always uses booked exact instants. Calendar nights use
+booked dates. Date-only unknowns remain unknown.
+
+Time meanings remain compatibility metadata and are derived from role (check-in from,
+check-out until, other known times exact). The UI no longer exposes a time-mode selector.
+Database constraints enforce complete planned instants and role-derived meanings. Migration
+preserves existing hotel plan times/offsets, backfills their date and refreshes entry sort keys;
+it does not invent early airport arrivals or replace booked instants. Existing versioned owner
+writes and verified read shares apply. These optional private planning dates/times share trip
+retention, deletion and backup limitations; no new recipients, logs or third-party requests.

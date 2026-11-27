@@ -60,10 +60,12 @@ class TravelPostgresTests {
         owner.username = UUID.randomUUID().toString().substring(0, 30); owner.usernameKey = owner.username;
         owner.termsAcceptedAt = Instant.now(); accounts.saveAndFlush(owner);
         var trip = travel.create(owner.id, new SaveTrip("Synthetic journey", "", LocalDate.of(2030, 12, 1), LocalDate.of(2030, 12, 10), 0L));
-        var point = new Point(PointRole.START, LocalDate.of(2030, 12, 2), null, "Asia/Bangkok", null, TimeMeaning.UNSPECIFIED, "Example place", "", "https://www.google.com/maps/embed?pb=!1m18!synthetic");
+        var point = new Point(PointRole.START, LocalDate.of(2030, 12, 2), null, "Asia/Bangkok", null, TimeMeaning.UNSPECIFIED, "Example place", "", "https://www.google.com/maps/embed?pb=!1m18!synthetic", LocalTime.of(18, 0), null, LocalDate.of(2030, 12, 1));
         assertEquals(1, jdbc.queryForObject("select count(*) from information_schema.columns where table_name='travel_points' and column_name='timeline_time'", Integer.class));
         var entry = travel.createEntry(owner.id, trip.id(), new SaveEntry(EntryType.ACTIVITY, "Example activity", "", "", List.of(point), 0L, "Booking.com"));
         assertNull(travel.getEntry(owner.id, trip.id(), entry.id()).points().getFirst().time());
+        assertEquals(LocalDate.of(2030, 12, 1), travel.getEntry(owner.id, trip.id(), entry.id()).points().getFirst().timelineDate());
+        assertEquals(LocalTime.of(18, 0), travel.getEntry(owner.id, trip.id(), entry.id()).points().getFirst().timelineTime());
         assertEquals("Booking.com", travel.getEntry(owner.id, trip.id(), entry.id()).bookingSource());
         assertEquals(point.mapEmbedUrl(), travel.getEntry(owner.id, trip.id(), entry.id()).points().getFirst().mapEmbedUrl());
         byte[] bytes = "%PDF-1.7 synthetic fixture".getBytes(StandardCharsets.UTF_8);

@@ -23,4 +23,5 @@ public class TravelPoint {
     @Column(length = 16000) public String mapEmbedUrl;
     public LocalTime timelineTime;
     @Column(length = 9) public String timelineUtcOffset;
+    public LocalDate timelineDate;
 }
